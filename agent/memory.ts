@@ -1,5 +1,6 @@
 type MemoryEntry = Record<string, any>;
 
+// Simple in-memory session store; data is lost when the process restarts.
 const memoryStore: Record<string, MemoryEntry[]> = {};
 
 export function getSessionMemory(sessionId: string) {
@@ -7,8 +8,9 @@ export function getSessionMemory(sessionId: string) {
 }
 
 export function appendSessionMemory(sessionId: string, entry: MemoryEntry) {
-  memoryStore[sessionId] = [...getSessionMemory(sessionId), entry];
-  return memoryStore[sessionId];
+  const sessionMemory = memoryStore[sessionId] ?? (memoryStore[sessionId] = []);
+  sessionMemory.push(entry);
+  return sessionMemory;
 }
 
 export function clearSessionMemory(sessionId: string) {
