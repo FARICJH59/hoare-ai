@@ -9,13 +9,18 @@ export type ToolPayload = {
   resource?: string;
   component?: string;
   issue?: string;
+  // carbon tool fields
+  company?: string;
+  sector?: string;
+  projectType?: string;
+  location?: string;
   [key: string]: unknown;
 };
 
 export type ToolResult = {
   agent: string;
   action: string;
-  output: string;
+  output: unknown;
   payload: ToolPayload;
 };
 
