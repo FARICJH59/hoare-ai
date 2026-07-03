@@ -16,6 +16,7 @@ export type AgentRequest = {
 };
 
 export type AgentResponse = {
+  session: string;
   result: RouteResult;
   verification: VerificationResult;
   memory: ReturnType<typeof getSessionMemory>;
@@ -28,12 +29,18 @@ export async function runAgent(request: AgentRequest): Promise<AgentResponse> {
 
   const verification = verify(result) as VerificationResult;
 
-  const memory = appendSessionMemory(sessionId, {
+  appendSessionMemory(sessionId, {
+    payload,
     kind,
     result,
-    verified: verification.verified,
-    timestamp: verification.timestamp,
+    verification,
+    timestamp: Date.now(),
   });
 
-  return { result, verification, memory };
+  return {
+    session: sessionId,
+    memory: getSessionMemory(sessionId),
+    result,
+    verification,
+  };
 }
