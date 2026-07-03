@@ -7,5 +7,5 @@ export async function routeTask(kind: string, payload: any) {
     return await (tool as (payload: any) => Promise<unknown>)(payload);
   }
 
-  return { error: "Unknown task type" };
+  return { error: `Unknown task type: ${kind}` };
 }

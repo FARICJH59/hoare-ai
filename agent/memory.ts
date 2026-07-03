@@ -8,7 +8,11 @@ export function getSessionMemory(sessionId: string) {
 }
 
 export function appendSessionMemory(sessionId: string, entry: MemoryEntry) {
-  const sessionMemory = memoryStore[sessionId] ?? (memoryStore[sessionId] = []);
+  if (!memoryStore[sessionId]) {
+    memoryStore[sessionId] = [];
+  }
+
+  const sessionMemory = memoryStore[sessionId];
   sessionMemory.push(entry);
   return sessionMemory;
 }
