@@ -1,4 +1,4 @@
-type MemoryEntry = Record<string, any>;
+type MemoryEntry = Record<string, unknown>;
 
 // Simple in-memory session store; data is lost when the process restarts.
 const memoryStore: Record<string, MemoryEntry[]> = {};
