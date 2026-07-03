@@ -1,4 +1,6 @@
-export async function finance(payload: any) {
+import type { ToolPayload } from "./types";
+
+export async function finance(payload: ToolPayload) {
   return {
     agent: "finance",
     action: "ledger",

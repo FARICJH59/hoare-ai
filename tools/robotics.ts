@@ -1,4 +1,6 @@
-export async function robotics(payload: any) {
+import type { ToolPayload } from "./types";
+
+export async function robotics(payload: ToolPayload) {
   return {
     agent: "robotics",
     action: "control-loop",

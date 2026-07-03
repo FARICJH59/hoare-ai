@@ -1,4 +1,6 @@
-export async function ml(payload: any) {
+import type { ToolPayload } from "./types";
+
+export async function ml(payload: ToolPayload) {
   return {
     agent: "ml",
     action: "pipeline",

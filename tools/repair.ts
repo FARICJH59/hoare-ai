@@ -1,4 +1,6 @@
-export async function repair(payload: any) {
+import type { ToolPayload } from "./types";
+
+export async function repair(payload: ToolPayload) {
   return {
     agent: "repair",
     action: "fix",

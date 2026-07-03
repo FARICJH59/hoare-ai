@@ -1,4 +1,6 @@
-export async function devops(payload: any) {
+import type { ToolPayload } from "./types";
+
+export async function devops(payload: ToolPayload) {
   return {
     agent: "devops",
     action: "pipeline",

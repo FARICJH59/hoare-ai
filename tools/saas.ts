@@ -1,4 +1,6 @@
-export async function saas(payload: any) {
+import type { ToolPayload } from "./types";
+
+export async function saas(payload: ToolPayload) {
   return {
     agent: "saas",
     action: "dashboard",

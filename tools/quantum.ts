@@ -1,4 +1,6 @@
-export async function quantum(payload: any) {
+import type { ToolPayload } from "./types";
+
+export async function quantum(payload: ToolPayload) {
   return {
     agent: "quantum",
     action: "circuit",
