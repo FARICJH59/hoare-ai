@@ -12,9 +12,8 @@ export function appendSessionMemory(sessionId: string, entry: MemoryEntry) {
     memoryStore[sessionId] = [];
   }
 
-  const sessionMemory = memoryStore[sessionId];
-  sessionMemory.push(entry);
-  return sessionMemory;
+  memoryStore[sessionId].push(entry);
+  return memoryStore[sessionId];
 }
 
 export function clearSessionMemory(sessionId: string) {
