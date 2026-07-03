@@ -14,6 +14,11 @@ export type ToolPayload = {
   sector?: string;
   projectType?: string;
   location?: string;
+  // energy tool fields
+  facility?: string;
+  region?: string;
+  loadProfile?: string;
+  gridStatus?: string;
   [key: string]: unknown;
 };
 
