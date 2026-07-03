@@ -108,7 +108,8 @@ export class Agent {
   }
 
   private detectToolCall(message: string): { name: string; params: Record<string, unknown> } | null {
-    const match = message.match(/use_tool:(\w[\w-]*)(?:\((\{.*?\})\))?/);
+    // Use [^{}]* instead of .*? to avoid polynomial backtracking (ReDoS)
+    const match = message.match(/use_tool:(\w[\w-]*)(?:\((\{[^{}]*\})\))?/);
     if (!match) return null;
     const name = match[1];
     let params: Record<string, unknown> = {};
