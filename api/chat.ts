@@ -1,0 +1,91 @@
+import { Router, Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { Agent } from "../agent/agent";
+import { AgentMemory } from "../agent/memory";
+import { allTools } from "../tools";
+
+interface Session {
+  id: string;
+  agent: Agent;
+  createdAt: number;
+  lastActiveAt: number;
+}
+
+const sessions: Map<string, Session> = new Map();
+
+function getOrCreateSession(sessionId: string): Session {
+  if (!sessions.has(sessionId)) {
+    const agent = new Agent({
+      name: `session-agent-${sessionId}`,
+      description: "Auto-created agent for chat session.",
+      tools: allTools,
+    });
+    const session: Session = {
+      id: sessionId,
+      agent,
+      createdAt: Date.now(),
+      lastActiveAt: Date.now(),
+    };
+    sessions.set(sessionId, session);
+    return session;
+  }
+  const session = sessions.get(sessionId)!;
+  session.lastActiveAt = Date.now();
+  return session;
+}
+
+export const chatRouter = Router();
+
+// POST /api/chat — send a message and get an agent response
+chatRouter.post("/", async (req: Request, res: Response) => {
+  const { message, sessionId } = req.body as { message?: string; sessionId?: string };
+
+  if (!message || typeof message !== "string" || message.trim() === "") {
+    res.status(400).json({ error: "message is required and must be a non-empty string." });
+    return;
+  }
+
+  const sid = sessionId && typeof sessionId === "string" ? sessionId : uuidv4();
+  const session = getOrCreateSession(sid);
+
+  try {
+    const result = await session.agent.run(message.trim());
+    res.json({
+      sessionId: sid,
+      agentId: result.agentId,
+      response: result.response,
+      toolsUsed: result.toolsUsed,
+      iterations: result.iterations,
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unexpected error";
+    res.status(500).json({ error: message });
+  }
+});
+
+// GET /api/chat/:sessionId/history — retrieve conversation history
+chatRouter.get("/:sessionId/history", (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const session = sessions.get(sessionId);
+  if (!session) {
+    res.status(404).json({ error: `Session "${sessionId}" not found.` });
+    return;
+  }
+  const memory: AgentMemory = session.agent.getMemory();
+  res.json({ sessionId, entries: memory.getAll() });
+});
+
+// DELETE /api/chat/:sessionId — clear a session's conversation history
+chatRouter.delete("/:sessionId", (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const session = sessions.get(sessionId);
+  if (!session) {
+    res.status(404).json({ error: `Session "${sessionId}" not found.` });
+    return;
+  }
+  session.agent.getMemory().clear();
+  res.json({ sessionId, cleared: true });
+});
+
+export { sessions };

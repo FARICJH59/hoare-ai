@@ -1,0 +1,18 @@
+{
+  "name": "@hoare-ai/sdk",
+  "version": "1.0.0",
+  "description": "Official Node.js SDK for the hoare-ai agent runtime API.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["hoare-ai", "agent", "sdk"],
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
