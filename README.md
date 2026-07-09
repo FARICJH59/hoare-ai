@@ -294,7 +294,7 @@ See [`docs/api.md`](docs/api.md) for the full REST API documentation.
 
 ## Security
 
-- **JWT authentication** — ****** verification on protected routes
+- **JWT authentication** — signed JSON Web Token verification on protected routes
 - **API key authentication** — `X-API-Key` header support for service-to-service calls
 - **Rate limiting** — in-memory per-IP limiter (Redis-replaceable for distributed deployments)
 - **Security headers** — `X-Content-Type-Options`, `X-Frame-Options`, `CSP`, `Referrer-Policy`

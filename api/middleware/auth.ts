@@ -13,7 +13,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Middleware that accepts either a signed JWT (Authorization: ****** or a valid API key.
+ * Middleware that accepts either a signed JWT or a valid API key.
  * Attaches `req.auth` on success; returns 401 on failure.
  */
 export function authMiddleware(
@@ -35,7 +35,7 @@ export function authMiddleware(
     return;
   }
 
-  // JWT bearer check
+  // JWT bearer check: Authorization header with signed JSON Web Token
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
     try {
