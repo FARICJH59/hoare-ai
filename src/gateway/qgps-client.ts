@@ -42,7 +42,7 @@ export class QGPSClient {
   private get headers(): Record<string, string> {
     return {
       'Content-Type':  'application/json',
-      'Authorization': `******
+      'Authorization': 'Bearer ' + this.apiKey,
       'X-Client':      'hoare-ai/1.0',
     };
   }
