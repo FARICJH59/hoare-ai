@@ -1,0 +1,6 @@
+{
+  "industry": "fintech",
+  "agents": ["prompt-receiver", "intent-agent", "planner-agent"],
+  "services": ["payments-api", "ledger-engine", "risk-analytics", "kyc-service"],
+  "complianceRequirements": ["PCI-DSS", "SOC2", "AML/KYC"]
+}

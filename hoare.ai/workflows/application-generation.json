@@ -1,0 +1,13 @@
+{
+  "workflow": "application-generation",
+  "tasks": [
+    "design_architecture",
+    "build_backend",
+    "build_frontend",
+    "provision_database",
+    "harden_security",
+    "configure_deployment",
+    "enable_monitoring",
+    "verify"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "industry": "energy",
+  "agents": ["prompt-receiver", "intent-agent", "planner-agent"],
+  "services": ["grid-telemetry-api", "asset-registry", "forecasting-engine", "operations-dashboard"],
+  "complianceRequirements": ["NERC CIP", "ISO 27001", "Operational Resilience"]
+}

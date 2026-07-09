@@ -1,0 +1,6 @@
+{
+  "industry": "healthcare",
+  "agents": ["prompt-receiver", "intent-agent", "planner-agent"],
+  "services": ["patient-api", "clinical-data-store", "analytics-dashboard", "audit-logging"],
+  "complianceRequirements": ["HIPAA", "SOC2", "PHI Encryption"]
+}
