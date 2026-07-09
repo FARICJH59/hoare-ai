@@ -55,7 +55,7 @@ function createQgpsClient(options = {}) {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + apiKey,
+          Authorization: "Bearer ".concat(apiKey),
         },
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
