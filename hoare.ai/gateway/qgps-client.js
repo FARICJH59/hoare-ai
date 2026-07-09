@@ -49,7 +49,9 @@ function createQgpsClient(options = {}) {
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(`${baseUrl.replace(/\/$/, "")}${endpoint}`, {
+      const normalizedEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+      const url = new URL(normalizedEndpoint, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
+      const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",

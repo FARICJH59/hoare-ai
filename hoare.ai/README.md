@@ -25,7 +25,7 @@ QGPS is the Autonomous Execution Control Plane used to submit generated workflow
 ## Environment variables
 
 - `QGPS_URL`: Base URL for QGPS API (for non-mock mode)
-- `QGPS_API_KEY`: ****** for QGPS API (for non-mock mode)
+- `QGPS_API_KEY`: credential used for QGPS API authentication (for non-mock mode)
 - `QGPS_MOCK_MODE`: `true`/`false` toggle (defaults to true if QGPS credentials are missing)
 - `QGPS_TIMEOUT_MS`: Optional request timeout in milliseconds
 
