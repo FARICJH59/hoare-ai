@@ -57,7 +57,7 @@ jobs:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ci-test-secret-32-chars-minimum-ok
       OPENAI_API_KEY: sk-test-placeholder
-      DATABASE_URL: ******localhost:5432/test
+      DATABASE_URL: postgres://localhost:5432/test
     steps:
       - uses: actions/checkout@v4
 
