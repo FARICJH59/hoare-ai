@@ -61,7 +61,16 @@ function createQgpsClient(options = {}) {
         signal: controller.signal,
       });
 
-      const payload = await response.json().catch(() => ({}));
+      let payload = {};
+      try {
+        payload = await response.json();
+      } catch (parseError) {
+        log("warn", "Unable to parse QGPS response body as JSON", {
+          endpoint,
+          method,
+          error: parseError.message,
+        });
+      }
       if (!response.ok) {
         throw new Error(`QGPS API error ${response.status}: ${payload.message || "unknown error"}`);
       }
