@@ -1,0 +1,19 @@
+{
+  "name": "@hoare-ai/security",
+  "version": "1.0.0",
+  "description": "Security utilities — RBAC, sanitisation, token generation — for HOARE.ai.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["hoare-ai", "security", "rbac"],
+  "license": "MIT",
+  "dependencies": {
+    "@hoare-ai/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
