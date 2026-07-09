@@ -494,7 +494,7 @@ describe("QGPS multi-tenant task isolation at scale", () => {
 // ── 6. AgentMemory stability under high volume ────────────────────────────────
 
 describe("AgentMemory stability under high volume", () => {
-  it("stores 5 000 entries with a capped memory and enforces the limit", () => {
+  it("stores 5,000 entries with a capped memory and enforces the limit", () => {
     const cap = 500;
     const mem = new AgentMemory("enterprise-mem", cap);
 
@@ -505,7 +505,7 @@ describe("AgentMemory stability under high volume", () => {
     expect(mem.size()).toBe(cap);
   });
 
-  it("search across 1 000 entries returns only relevant results", () => {
+  it("search across 1,000 entries returns only relevant results", () => {
     const mem = new AgentMemory("search-mem", 2_000);
 
     for (let i = 0; i < 900; i++) {
