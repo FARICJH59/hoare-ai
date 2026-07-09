@@ -1,0 +1,20 @@
+{
+  "name": "hoare-ai-runtime",
+  "version": "1.0.0",
+  "description": "Production-grade autonomous AI project factory runtime for HOARE.ai",
+  "main": "index.js",
+  "bin": {
+    "hoare": "./cli/cli.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node tests/runtime.test.js",
+    "cli": "node cli/cli.js"
+  },
+  "keywords": ["ai", "agent", "factory", "qgps", "autonomous"],
+  "author": "HOARE.ai",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^9.0.0"
+  }
+}
