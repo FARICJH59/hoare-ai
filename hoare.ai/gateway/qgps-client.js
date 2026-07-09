@@ -19,18 +19,26 @@ function requireFetch() {
   }
 }
 
+function resolveMockMode(optionsMockMode, envMockModeRaw, baseUrl, apiKey) {
+  if (typeof optionsMockMode === "boolean") {
+    return optionsMockMode;
+  }
+
+  if (envMockModeRaw === "true") {
+    return true;
+  }
+  if (envMockModeRaw === "false") {
+    return false;
+  }
+
+  return !baseUrl && !apiKey;
+}
+
 function createQgpsClient(options = {}) {
   const baseUrl = options.baseUrl || process.env.QGPS_URL || "";
   const apiKey = options.apiKey || process.env.QGPS_API_KEY || "";
   const envMockModeRaw = process.env.QGPS_MOCK_MODE;
-  const envMockModeDefined = envMockModeRaw === "true" || envMockModeRaw === "false";
-  const envMockMode = envMockModeRaw === "true";
-  const mockMode =
-    typeof options.mockMode === "boolean"
-      ? options.mockMode
-      : envMockModeDefined
-        ? envMockMode
-        : (!baseUrl && !apiKey);
+  const mockMode = resolveMockMode(options.mockMode, envMockModeRaw, baseUrl, apiKey);
   const timeoutMs = Number(options.timeoutMs || process.env.QGPS_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
 
   async function request(method, endpoint, body) {
@@ -39,7 +47,7 @@ function createQgpsClient(options = {}) {
         ok: true,
         request: { method, endpoint, body },
         data: {
-          workflowId: body && body.workflowId ? body.workflowId : `wf_${Date.now()}`,
+          workflowId: body?.workflowId ?? `wf_${Date.now()}`,
           status: method === "GET" ? "completed" : "submitted",
         },
       };
@@ -117,4 +125,5 @@ function createQgpsClient(options = {}) {
 
 module.exports = {
   createQgpsClient,
+  resolveMockMode,
 };

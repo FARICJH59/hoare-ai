@@ -22,6 +22,8 @@ const DEFAULT_RULES = {
     deployment: /(deploy|devops|ci\/cd|infrastructure|kubernetes|docker)/i,
   },
 };
+const HIGH_COMPLEXITY_CAPABILITY_THRESHOLD = 6;
+const MEDIUM_COMPLEXITY_CAPABILITY_THRESHOLD = 4;
 
 function log(level, message, context) {
   const payload = {
@@ -36,10 +38,16 @@ function log(level, message, context) {
 
 function detectComplexity(prompt, capabilityCount) {
   const text = String(prompt || "");
-  if (capabilityCount >= 6 || /(multi-tenant|autonomous|distributed|global scale|enterprise)/i.test(text)) {
+  if (
+    capabilityCount >= HIGH_COMPLEXITY_CAPABILITY_THRESHOLD ||
+    /(multi-tenant|autonomous|distributed|global scale|enterprise)/i.test(text)
+  ) {
     return "HIGH";
   }
-  if (capabilityCount >= 4 || /(platform|analytics|compliance|integration)/i.test(text)) {
+  if (
+    capabilityCount >= MEDIUM_COMPLEXITY_CAPABILITY_THRESHOLD ||
+    /(platform|analytics|compliance|integration)/i.test(text)
+  ) {
     return "MEDIUM";
   }
   return "LOW";
