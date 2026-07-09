@@ -377,6 +377,18 @@ networks:
 // ─── Kubernetes Manifests ─────────────────────────────────────────────────────
 
 /**
+ * Parses a Kubernetes resource quantity string and returns { value, unit }.
+ * Handles: millicores (e.g. "500m"), Mi (e.g. "512Mi"), Gi (e.g. "1Gi").
+ * @param {string} quantity
+ * @returns {{ value: number, unit: string }}
+ */
+function parseK8sQuantity(quantity) {
+  const match = String(quantity).match(/^(\d+)(m|Mi|Gi|Ki|M|G|K)?$/);
+  if (!match) return { value: 500, unit: 'm' };
+  return { value: parseInt(match[1], 10), unit: match[2] || '' };
+}
+
+/**
  * Generates a Kubernetes Deployment manifest.
  * @param {object} params
  * @param {string} params.projectName
@@ -387,8 +399,14 @@ networks:
  * @returns {string}
  */
 function generateK8sDeployment({ projectName, replicas = 2, image, port = 3000, resourceLimits = {} }) {
-  const cpu    = resourceLimits.cpu    || '500m';
-  const memory = resourceLimits.memory || '512Mi';
+  const cpuLimit    = resourceLimits.cpu    || '500m';
+  const memLimit    = resourceLimits.memory || '512Mi';
+
+  const cpuQ  = parseK8sQuantity(cpuLimit);
+  const memQ  = parseK8sQuantity(memLimit);
+
+  const cpuRequest  = `${Math.round(cpuQ.value / 2)}${cpuQ.unit}`;
+  const memRequest  = `${Math.round(memQ.value / 2)}${memQ.unit}`;
 
   return `apiVersion: apps/v1
 kind: Deployment
@@ -433,11 +451,11 @@ spec:
                 name: ${projectName}-secrets
           resources:
             requests:
-              cpu: ${Math.round(parseInt(cpu) / 2)}m
-              memory: ${Math.round(parseInt(memory) / 2)}Mi
+              cpu: ${cpuRequest}
+              memory: ${memRequest}
             limits:
-              cpu: ${cpu}
-              memory: ${memory}
+              cpu: ${cpuLimit}
+              memory: ${memLimit}
           livenessProbe:
             httpGet:
               path: /health

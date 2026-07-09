@@ -14,8 +14,6 @@
  *                                                     QGPSGateway
  */
 
-'use strict';
-
 const { PromptReceiverAgent }  = require('./agents/prompt-receiver');
 const { IntentAgent }          = require('./agents/intent-agent');
 const { PlannerAgent }         = require('./agents/planner-agent');
