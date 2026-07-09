@@ -84,29 +84,37 @@ hoare-ai/
 │   │   ├── chat/page.tsx       # Main chat interface
 │   │   ├── auth/               # Sign-in / error pages
 │   │   └── api/
-│   │       ├── chat/route.ts   # Streaming chat endpoint
-│   │       ├── generate/route.ts  # Project generation endpoint
-│   │       └── health/route.ts    # Health check
+│   │       ├── chat/route.ts          # Streaming chat endpoint
+│   │       ├── generate/route.ts      # Project generation endpoint
+│   │       ├── health/route.ts        # Health check
+│   │       ├── registry/              # Agent & skill registry endpoints
+│   │       ├── marketplace/           # Capability marketplace endpoints
+│   │       ├── enterprise/            # Org / RBAC / API keys / usage endpoints
+│   │       └── observability/         # Metrics & traces endpoints
 │   ├── agents/                 # TypeScript agent framework
-│   │   ├── prompt-receiver.ts
-│   │   ├── intent-agent.ts
-│   │   ├── planner-agent.ts
-│   │   ├── project-factory-agent.ts
-│   │   └── verification-agent.ts
-│   ├── gateway/
-│   │   └── qgps-client.ts      # QGPS Control Plane integration
+│   ├── gateway/                # QGPS Control Plane integration
 │   ├── memory/                 # Session + project memory
 │   ├── knowledge/              # Industry knowledge packs
 │   ├── capabilities/           # Capability registry
 │   ├── components/             # React UI components
-│   │   ├── ui/                 # shadcn/ui primitives
-│   │   ├── chat/               # Chat interface components
-│   │   └── layout/             # Theme provider
-│   ├── lib/
-│   │   ├── auth.ts             # NextAuth.js configuration
-│   │   └── utils.ts            # Utility functions
 │   └── middleware.ts           # Rate limiting middleware
-├── hoare.ai/                   # Node.js agent runtime (JS)
+├── hoare.ai/                   # Node.js agent runtime (CommonJS)
+│   ├── agents/                 # Core pipeline agents
+│   ├── gateway/                # QGPS gateway
+│   ├── memory/                 # Project / user / session / vector memory
+│   ├── registries/             # Agent registry + skill registry
+│   ├── marketplace/            # Capability marketplace
+│   ├── enterprise/             # Orgs, RBAC, API keys, metering, multi-tenancy
+│   ├── observability/          # Tracing, metrics, cost tracking, health dashboard
+│   ├── plugins/                # Plugin framework
+│   ├── sdk/                    # REST client + JS/TS SDK
+│   ├── templates/              # Code generators
+│   ├── versioning/             # Workflow versioning
+│   ├── audit/                  # Audit log
+│   ├── cli/                    # CLI tool
+│   ├── utils/                  # Logger, ID generator
+│   └── tests/                  # Runtime test suite
+├── deploy.sh                   # Automated production deployment script
 ├── .github/workflows/ci.yml    # CI pipeline
 ├── vercel.json                 # Vercel deployment config
 └── .env.example                # Environment variable template
@@ -244,22 +252,129 @@ Full agent pipeline — returns structured JSON artifacts.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/FARICJH59/hoare-ai)
 
-### Manual deployment
+### Automated deployment script
+
+The repository ships with `deploy.sh` — a fully automated, fail-safe script that handles everything from preflight checks to Vercel deployment.
+
+```bash
+# Make executable (first time only)
+chmod +x deploy.sh
+
+# Run
+./deploy.sh
+```
+
+The script automatically:
+1. **Preflight checks** — verifies Git is initialised, current branch is `main`, Vercel CLI is installed, and you are authenticated.
+2. **Backs up** existing `vercel.json` / `.env.example` before touching them.
+3. Runs `npm install` → `npm run lint` → `npm test` → `npm run build` — and **stops immediately** if any step fails.
+4. Commits and pushes to `origin/main`.
+5. Deploys to Vercel production with `vercel --prod`.
+
+#### Prerequisites
 
 ```bash
 # Install Vercel CLI
-npm i -g vercel
+npm install -g vercel
 
-# Deploy
+# Log in
+vercel login
+
+# Ensure you are on main
+git checkout main
+```
+
+#### Required environment variables
+
+Set these in your shell or in the Vercel dashboard before running the script:
+
+| Variable             | Required | Description                                      |
+|----------------------|----------|--------------------------------------------------|
+| `NEXTAUTH_URL`       | ✅       | Production URL, e.g. `https://hoare.ai`          |
+| `NEXTAUTH_SECRET`    | ✅       | Random 32+ char secret (`openssl rand -base64 32`) |
+| `OPENAI_API_KEY`     | ✅       | OpenAI API key for LLM responses                  |
+| `DATABASE_URL`       | ✅       | PostgreSQL connection string                      |
+| `QGPS_BASE_URL`      | Optional | QGPS Control Plane URL                           |
+| `QGPS_API_KEY`       | Optional | QGPS API key                                     |
+
+### Manual deployment
+
+```bash
+npm i -g vercel
 vercel deploy --prod
 ```
 
-Set the following environment variables in the Vercel dashboard:
+### Environment validation
 
-- `NEXTAUTH_URL` — your production URL (e.g., `https://hoare.ai`)
-- `NEXTAUTH_SECRET` — random 32+ char secret (`openssl rand -base64 32`)
-- `OPENAI_API_KEY` — optional, for LLM responses
-- `DATABASE_URL` — optional, for persistent sessions
+The app validates required environment variables at startup. Missing variables cause a clear error message rather than a silent failure.
+
+---
+
+## Extended API Reference
+
+In addition to the core endpoints (`/api/chat`, `/api/generate`, `/api/health`), the following enterprise and observability endpoints are available:
+
+### Agent & Skill Registry
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/registry/agents?kind=<kind>` | List registered agents |
+| `GET`  | `/api/registry/skills?kind=<kind>` | List registered skills |
+
+### Capability Marketplace
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/marketplace/packs` | List loaded capability packs |
+| `POST` | `/api/marketplace/enable` | Enable a pack for a tenant `{ tenantId, packId }` |
+| `POST` | `/api/marketplace/disable` | Disable a pack for a tenant `{ tenantId, packId }` |
+
+### Enterprise
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/enterprise/organizations` | List organizations |
+| `POST` | `/api/enterprise/organizations` | Create an organization `{ name, plan }` |
+| `GET`  | `/api/enterprise/rbac?tenantId=&userId=` | Get user roles and permissions |
+| `POST` | `/api/enterprise/rbac` | Assign/revoke roles `{ action, tenantId, userId, roleId }` |
+| `GET`  | `/api/enterprise/api-keys?tenantId=` | List API keys for tenant |
+| `POST` | `/api/enterprise/api-keys` | Issue/revoke API keys `{ action, tenantId, name }` |
+| `GET`  | `/api/enterprise/usage?tenantId=` | Get usage and quota for tenant |
+
+### Observability
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/observability/metrics` | Get runtime metrics (counters, gauges, histograms) |
+| `GET`  | `/api/observability/traces?limit=50` | List recent workflow traces |
+
+---
+
+## Plugin Framework
+
+HOARE.ai supports third-party plugins. A plugin is a JavaScript module that exports:
+
+```js
+module.exports = {
+  id: 'my-org/my-plugin',
+  name: 'My Plugin',
+  version: '1.0.0',
+  agents:    [ /* agent definitions */ ],
+  skills:    [ /* skill definitions */ ],
+  packs:     [ /* capability pack definitions */ ],
+  templates: [ /* workflow template metadata */ ],
+};
+```
+
+Load it at runtime:
+
+```js
+const { pluginFramework } = require('./hoare.ai/plugins/plugin-framework');
+const myPlugin = require('./my-plugin');
+pluginFramework.load(myPlugin);
+```
+
+Plugins can add **agents**, **skills**, **capability packs**, and **workflow templates** without modifying any core runtime files.
 
 ---
 
@@ -270,7 +385,7 @@ Set the following environment variables in the Vercel dashboard:
 npm run type-check
 npm run lint
 
-# HOARE runtime tests (50 tests)
+# HOARE runtime tests (113 tests — covers all core + extended modules)
 npm test
 ```
 

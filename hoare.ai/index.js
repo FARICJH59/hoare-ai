@@ -25,6 +25,25 @@ const { WorkflowVersioning }   = require('./versioning/workflow-versioning');
 const { AuditLog }             = require('./audit/audit-log');
 const logger                   = require('./utils/logger');
 
+// ── Extended services (additive — do not break existing pipeline) ─────────────
+const { AgentRegistry }          = require('./registries/agent-registry');
+const { SkillRegistry }          = require('./registries/skill-registry');
+const { CapabilityMarketplace }  = require('./marketplace/capability-marketplace');
+const { UserMemory }             = require('./memory/user-memory');
+const { SessionMemory }          = require('./memory/session-memory');
+const { VectorInterface }        = require('./memory/vector-interface');
+const { Organizations }          = require('./enterprise/organizations');
+const { RBAC }                   = require('./enterprise/rbac');
+const { ApiKeys }                = require('./enterprise/api-keys');
+const { UsageMetering }          = require('./enterprise/usage-metering');
+const { MultiTenancy }           = require('./enterprise/multi-tenancy');
+const { WorkflowTracer }         = require('./observability/workflow-tracer');
+const { AgentTracer }            = require('./observability/agent-tracer');
+const { Metrics }                = require('./observability/metrics');
+const { CostTracker }            = require('./observability/cost-tracker');
+const { HealthDashboard }        = require('./observability/health-dashboard');
+const { PluginFramework }        = require('./plugins/plugin-framework');
+
 class HoareRuntime {
   /**
    * @param {object} [options]
@@ -75,6 +94,33 @@ class HoareRuntime {
     this.gateway.on('workflow:succeeded',  e => this._onWorkflowSucceeded(e));
     this.gateway.on('workflow:failed',     e => this._onWorkflowFailed(e));
     this.gateway.on('workflow:remediating',e => this._onRemediation(e));
+
+    // ── Extended services ──────────────────────────────────────────────────
+    this.agentRegistry        = new AgentRegistry();
+    this.skillRegistry        = new SkillRegistry();
+    this.capabilityMarketplace = new CapabilityMarketplace();
+    this.userMemory           = new UserMemory();
+    this.sessionMemory        = new SessionMemory();
+    this.vectorInterface      = new VectorInterface();
+    this.organizations        = new Organizations();
+    this.rbac                 = new RBAC();
+    this.apiKeys              = new ApiKeys();
+    this.usageMetering        = new UsageMetering();
+    this.multiTenancy         = new MultiTenancy();
+    this.workflowTracer       = new WorkflowTracer();
+    this.agentTracer          = new AgentTracer();
+    this.metrics              = new Metrics();
+    this.costTracker          = new CostTracker();
+    this.healthDashboard      = new HealthDashboard();
+    this.pluginFramework      = new PluginFramework();
+
+    // Register built-in health checks
+    this.healthDashboard.register('runtime',  () => ({ healthy: true }),            { critical: true });
+    this.healthDashboard.register('memory',   () => ({ healthy: true, details: this.projectMemory.stats() }));
+    this.healthDashboard.register('gateway',  async () => {
+      const status = this.gateway.listWorkflows();
+      return { healthy: true, details: { trackedWorkflows: status.length } };
+    });
 
     logger.info('HoareRuntime', 'Runtime initialized', {
       tenantId: options.tenantId || 'default',
@@ -160,10 +206,31 @@ class HoareRuntime {
    */
   status() {
     return {
-      memory:     this.projectMemory.stats(),
-      versioning: this.workflowVersioning.stats(),
-      audit:      { entries: this.auditLog.count() },
-      workflows:  this.gateway.listWorkflows(),
+      memory:       this.projectMemory.stats(),
+      versioning:   this.workflowVersioning.stats(),
+      audit:        { entries: this.auditLog.count() },
+      workflows:    this.gateway.listWorkflows(),
+      // Extended service stats
+      agents:       this.agentRegistry.stats(),
+      skills:       this.skillRegistry.stats(),
+      marketplace:  this.capabilityMarketplace.stats(),
+      userMemory:   this.userMemory.stats(),
+      sessionMemory: this.sessionMemory.stats(),
+      enterprise: {
+        organizations: this.organizations.stats(),
+        rbac:          this.rbac.stats(),
+        apiKeys:       this.apiKeys.stats(),
+        usageMetering: this.usageMetering.stats(),
+        tenants:       this.multiTenancy.stats(),
+      },
+      observability: {
+        traces:  this.workflowTracer.stats(),
+        spans:   this.agentTracer.stats(),
+        metrics: this.metrics.stats(),
+        costs:   this.costTracker.stats(),
+        health:  this.healthDashboard.stats(),
+      },
+      plugins: this.pluginFramework.stats(),
     };
   }
 
@@ -182,4 +249,29 @@ class HoareRuntime {
   }
 }
 
-module.exports = { HoareRuntime };
+module.exports = {
+  HoareRuntime,
+  // Registries
+  AgentRegistry,
+  SkillRegistry,
+  // Marketplace
+  CapabilityMarketplace,
+  // Memory
+  UserMemory,
+  SessionMemory,
+  VectorInterface,
+  // Enterprise
+  Organizations,
+  RBAC,
+  ApiKeys,
+  UsageMetering,
+  MultiTenancy,
+  // Observability
+  WorkflowTracer,
+  AgentTracer,
+  Metrics,
+  CostTracker,
+  HealthDashboard,
+  // Plugin Framework
+  PluginFramework,
+};

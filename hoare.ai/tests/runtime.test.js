@@ -477,6 +477,582 @@ testAsync('multi-tenant isolation in memory', async () => {
   assert.strictEqual(runtime1.projectMemory.listByTenant('beta').length, 0);
 });
 
+// ── Agent Registry ────────────────────────────────────────────────────────────
+process.stdout.write('\n[ AgentRegistry ]\n');
+
+const { AgentRegistry }    = require('../registries/agent-registry');
+const { SkillRegistry }    = require('../registries/skill-registry');
+const { CapabilityMarketplace } = require('../marketplace/capability-marketplace');
+const { UserMemory }       = require('../memory/user-memory');
+const { SessionMemory }    = require('../memory/session-memory');
+const { VectorInterface, cosineSimilarity } = require('../memory/vector-interface');
+const { Organizations }    = require('../enterprise/organizations');
+const { RBAC, SYSTEM_ROLES } = require('../enterprise/rbac');
+const { ApiKeys }          = require('../enterprise/api-keys');
+const { UsageMetering }    = require('../enterprise/usage-metering');
+const { MultiTenancy }     = require('../enterprise/multi-tenancy');
+const { WorkflowTracer }   = require('../observability/workflow-tracer');
+const { AgentTracer }      = require('../observability/agent-tracer');
+const { Metrics }          = require('../observability/metrics');
+const { CostTracker, DEFAULT_PRICING } = require('../observability/cost-tracker');
+const { HealthDashboard }  = require('../observability/health-dashboard');
+const { PluginFramework }  = require('../plugins/plugin-framework');
+
+test('registers and retrieves an agent', () => {
+  const reg = new AgentRegistry();
+  const agent = reg.register({ id: 'test:a1', name: 'TestAgent', kind: 'custom', version: '1.0.0', handler: async () => 'ok' });
+  assert.strictEqual(agent.id, 'test:a1');
+  assert.strictEqual(reg.get('test:a1').kind, 'custom');
+});
+
+test('lists agents by kind', () => {
+  const reg = new AgentRegistry();
+  reg.register({ id: 'a:intent', name: 'I', kind: 'intent',  version: '1.0.0', handler: async () => {} });
+  reg.register({ id: 'a:custom', name: 'C', kind: 'custom',  version: '1.0.0', handler: async () => {} });
+  assert.strictEqual(reg.list('intent').length, 1);
+  assert.strictEqual(reg.list('custom').length, 1);
+  assert.strictEqual(reg.list().length, 2);
+});
+
+test('deregisters an agent', () => {
+  const reg = new AgentRegistry();
+  reg.register({ id: 'a:tmp', name: 'T', kind: 'custom', version: '1.0.0', handler: async () => {} });
+  assert.ok(reg.deregister('a:tmp'));
+  assert.strictEqual(reg.get('a:tmp'), null);
+});
+
+testAsync('invokes an agent handler', async () => {
+  const reg = new AgentRegistry();
+  reg.register({ id: 'a:echo', name: 'Echo', kind: 'tool', version: '1.0.0', handler: async (input) => ({ echo: input }) });
+  const result = await reg.invoke('a:echo', 'hello');
+  assert.strictEqual(result.echo, 'hello');
+});
+
+test('throws on invoke of unknown agent', () => {
+  const reg = new AgentRegistry();
+  assert.rejects(() => reg.invoke('nonexistent'));
+});
+
+test('agent registry stats', () => {
+  const reg = new AgentRegistry();
+  reg.register({ id: 'sa:1', name: 'A', kind: 'intent', version: '1.0.0', handler: async () => {} });
+  const s = reg.stats();
+  assert.strictEqual(s.total, 1);
+  assert.strictEqual(s.kinds.intent, 1);
+});
+
+// ── Skill Registry ────────────────────────────────────────────────────────────
+process.stdout.write('\n[ SkillRegistry ]\n');
+
+test('registers and executes a skill', async () => {
+  const reg = new SkillRegistry();
+  reg.register({ id: 'sk:greet', name: 'Greet', kind: 'tool', version: '1.0.0', execute: async ({ name }) => `Hello ${name}` });
+  const r = await reg.execute('sk:greet', { name: 'World' });
+  assert.strictEqual(r, 'Hello World');
+});
+
+test('loads skills from a plugin', () => {
+  const reg = new SkillRegistry();
+  const count = reg.loadPlugin({
+    id: 'my-plugin',
+    skills: [
+      { id: 'p:sk1', name: 'S1', kind: 'ai',   version: '1.0.0', execute: async () => {} },
+      { id: 'p:sk2', name: 'S2', kind: 'tool',  version: '1.0.0', execute: async () => {} },
+    ],
+  });
+  assert.strictEqual(count, 2);
+  assert.strictEqual(reg.list('ai').length, 1);
+});
+
+test('deregisters a skill', () => {
+  const reg = new SkillRegistry();
+  reg.register({ id: 'sk:del', name: 'D', kind: 'tool', version: '1.0.0', execute: async () => {} });
+  assert.ok(reg.deregister('sk:del'));
+  assert.strictEqual(reg.get('sk:del'), null);
+});
+
+// ── Capability Marketplace ────────────────────────────────────────────────────
+process.stdout.write('\n[ CapabilityMarketplace ]\n');
+
+test('loads a capability pack', () => {
+  const mp = new CapabilityMarketplace();
+  const pack = mp.load({ id: 'pack-auth', name: 'Auth Pack', version: '1.0.0' });
+  assert.strictEqual(pack.id, 'pack-auth');
+  assert.ok(mp.getPack('pack-auth'));
+});
+
+test('enables and disables a pack for a tenant', () => {
+  const mp = new CapabilityMarketplace();
+  mp.load({ id: 'pack-obs', name: 'Observability', version: '1.0.0' });
+  mp.enable('tenant-x', 'pack-obs');
+  assert.ok(mp.isEnabled('tenant-x', 'pack-obs'));
+  mp.disable('tenant-x', 'pack-obs');
+  assert.ok(!mp.isEnabled('tenant-x', 'pack-obs'));
+});
+
+test('unloads a pack and removes tenant enablements', () => {
+  const mp = new CapabilityMarketplace();
+  mp.load({ id: 'pack-rm', name: 'RemovePack', version: '1.0.0' });
+  mp.enable('t1', 'pack-rm');
+  assert.ok(mp.unload('pack-rm'));
+  assert.ok(!mp.isEnabled('t1', 'pack-rm'));
+});
+
+// ── User Memory ───────────────────────────────────────────────────────────────
+process.stdout.write('\n[ UserMemory ]\n');
+
+test('sets and retrieves user profile', () => {
+  const um = new UserMemory();
+  um.setProfile('u1', { timezone: 'UTC', plan: 'pro' });
+  const p = um.getProfile('u1');
+  assert.strictEqual(p.timezone, 'UTC');
+  assert.strictEqual(p.userId, 'u1');
+});
+
+test('appends user history', () => {
+  const um = new UserMemory();
+  um.addHistory('u2', { type: 'project_created', data: { name: 'My App' } });
+  um.addHistory('u2', { type: 'project_created', data: { name: 'App 2' } });
+  assert.strictEqual(um.getHistory('u2').length, 2);
+});
+
+test('forgets all user data', () => {
+  const um = new UserMemory();
+  um.setProfile('u3', { name: 'Alice' });
+  um.addHistory('u3', { type: 'ping' });
+  um.forget('u3');
+  assert.strictEqual(um.getProfile('u3'), null);
+  assert.strictEqual(um.getHistory('u3').length, 0);
+});
+
+// ── Session Memory ────────────────────────────────────────────────────────────
+process.stdout.write('\n[ SessionMemory ]\n');
+
+test('creates and retrieves a session', () => {
+  const sm = new SessionMemory();
+  const s  = sm.create({ userId: 'u1', tenantId: 't1' });
+  assert.ok(s.sessionId.startsWith('sess-'));
+  assert.strictEqual(sm.get(s.sessionId).userId, 'u1');
+});
+
+test('adds messages and auto-titles session', () => {
+  const sm = new SessionMemory();
+  const s  = sm.create({ userId: 'u2' });
+  sm.addMessage(s.sessionId, { role: 'user', content: 'Build me a REST API' });
+  const session = sm.get(s.sessionId);
+  assert.strictEqual(session.messages.length, 1);
+  assert.ok(session.title.length > 0);
+});
+
+testAsync('lists sessions by user newest first', async () => {
+  const sm = new SessionMemory();
+  const s1 = sm.create({ userId: 'u3' });
+  // Small delay so timestamps differ
+  await new Promise(r => setTimeout(r, 5));
+  const s2 = sm.create({ userId: 'u3' });
+  sm.addMessage(s2.sessionId, { role: 'user', content: 'Later session' });
+  const list = sm.listByUser('u3');
+  assert.strictEqual(list[0].sessionId, s2.sessionId);
+});
+
+test('deletes a session', () => {
+  const sm = new SessionMemory();
+  const s  = sm.create({ userId: 'u4' });
+  assert.ok(sm.delete(s.sessionId));
+  assert.strictEqual(sm.get(s.sessionId), null);
+});
+
+// ── Vector Interface ──────────────────────────────────────────────────────────
+process.stdout.write('\n[ VectorInterface ]\n');
+
+test('cosineSimilarity: identical vectors = 1', () => {
+  assert.strictEqual(cosineSimilarity([1, 0, 0], [1, 0, 0]), 1);
+});
+
+test('cosineSimilarity: orthogonal vectors = 0', () => {
+  assert.strictEqual(cosineSimilarity([1, 0], [0, 1]), 0);
+});
+
+testAsync('upserts and queries vectors', async () => {
+  const vi = new VectorInterface();
+  await vi.upsert('v1', [1, 0, 0], 'concept A');
+  await vi.upsert('v2', [0, 1, 0], 'concept B');
+  await vi.upsert('v3', [1, 0.1, 0], 'concept C (similar to A)');
+  const results = await vi.query([1, 0, 0], 2);
+  assert.strictEqual(results[0].id, 'v1');
+  assert.ok(results[0].score > results[1].score);
+});
+
+testAsync('deletes a vector', async () => {
+  const vi = new VectorInterface();
+  await vi.upsert('vd', [1, 1], 'to delete');
+  assert.ok(await vi.delete('vd'));
+  const r = await vi.query([1, 1], 5);
+  assert.ok(!r.some(x => x.id === 'vd'));
+});
+
+// ── Organizations ─────────────────────────────────────────────────────────────
+process.stdout.write('\n[ Organizations ]\n');
+
+test('creates and retrieves an organization', () => {
+  const orgs = new Organizations();
+  const org  = orgs.create({ name: 'Acme Corp', plan: 'enterprise' });
+  assert.ok(org.orgId.startsWith('org-'));
+  assert.strictEqual(orgs.get(org.orgId).name, 'Acme Corp');
+});
+
+test('adds and lists tenants in an org', () => {
+  const orgs = new Organizations();
+  const org  = orgs.create({ name: 'Widgets Inc' });
+  orgs.addTenant(org.orgId, 'tenant-1');
+  orgs.addTenant(org.orgId, 'tenant-2');
+  assert.strictEqual(orgs.listTenants(org.orgId).length, 2);
+  assert.strictEqual(orgs.getByTenant('tenant-1').orgId, org.orgId);
+});
+
+// ── RBAC ──────────────────────────────────────────────────────────────────────
+process.stdout.write('\n[ RBAC ]\n');
+
+test('system roles are pre-defined', () => {
+  const r = new RBAC();
+  assert.ok(r.listRoles().some(role => role.name === 'admin'));
+  assert.ok(r.listRoles().some(role => role.name === 'viewer'));
+});
+
+test('assigns role and checks permission', () => {
+  const r = new RBAC();
+  r.assign('t1', 'alice', 'admin');
+  assert.ok(r.can('t1', 'alice', 'write'));
+  assert.ok(r.can('t1', 'alice', 'delete'));
+  assert.ok(!r.can('t1', 'alice', 'nonexistent_perm'));
+});
+
+test('owner has wildcard permission', () => {
+  const r = new RBAC();
+  r.assign('t1', 'bob', 'owner');
+  assert.ok(r.can('t1', 'bob', 'any_arbitrary_perm'));
+});
+
+test('viewer cannot write', () => {
+  const r = new RBAC();
+  r.assign('t1', 'carol', 'viewer');
+  assert.ok(!r.can('t1', 'carol', 'write'));
+  assert.ok(r.can('t1', 'carol', 'read'));
+});
+
+test('defines a custom role with inheritance', () => {
+  const r = new RBAC();
+  r.defineRole({ name: 'editor', permissions: ['publish'], inherits: 'member' });
+  r.assign('t1', 'dave', 'editor');
+  assert.ok(r.can('t1', 'dave', 'read'));    // inherited from member
+  assert.ok(r.can('t1', 'dave', 'publish')); // own permission
+});
+
+test('revokes a role', () => {
+  const r = new RBAC();
+  r.assign('t1', 'eve', 'admin');
+  r.revoke('t1', 'eve', 'admin');
+  assert.ok(!r.can('t1', 'eve', 'write'));
+});
+
+// ── API Keys ──────────────────────────────────────────────────────────────────
+process.stdout.write('\n[ ApiKeys ]\n');
+
+test('issues and validates an API key', () => {
+  const ak = new ApiKeys();
+  const { raw, record } = ak.issue({ tenantId: 't1', name: 'CI key' });
+  assert.ok(raw.startsWith('hk_'));
+  const validated = ak.validate(raw);
+  assert.ok(validated);
+  assert.strictEqual(validated.tenantId, 't1');
+});
+
+test('revoked key fails validation', () => {
+  const ak = new ApiKeys();
+  const { raw, record } = ak.issue({ tenantId: 't1', name: 'Temp key' });
+  ak.revoke(record.hash);
+  assert.strictEqual(ak.validate(raw), null);
+});
+
+test('expired key fails validation', () => {
+  const ak = new ApiKeys();
+  const past = new Date(Date.now() - 1000).toISOString();
+  const { raw } = ak.issue({ tenantId: 't1', name: 'Old key', expiresAt: past });
+  assert.strictEqual(ak.validate(raw), null);
+});
+
+test('lists keys by tenant', () => {
+  const ak = new ApiKeys();
+  ak.issue({ tenantId: 'ta', name: 'K1' });
+  ak.issue({ tenantId: 'ta', name: 'K2' });
+  ak.issue({ tenantId: 'tb', name: 'K3' });
+  assert.strictEqual(ak.listByTenant('ta').length, 2);
+  assert.strictEqual(ak.listByTenant('tb').length, 1);
+});
+
+// ── Usage Metering ────────────────────────────────────────────────────────────
+process.stdout.write('\n[ UsageMetering ]\n');
+
+test('records and retrieves usage', () => {
+  const um = new UsageMetering();
+  um.record('t1', { type: 'api_call', quantity: 1 });
+  um.record('t1', { type: 'api_call', quantity: 5 });
+  um.record('t1', { type: 'token_usage', quantity: 1000 });
+  const usage = um.getUsage('t1');
+  assert.strictEqual(usage.requests, 6);
+  assert.strictEqual(usage.tokens, 1000);
+});
+
+test('within quota returns false when over limit', () => {
+  const um = new UsageMetering();
+  um.setQuota('t2', { requestsPerMonth: 3 });
+  um.record('t2', { type: 'api_call', quantity: 5 });
+  assert.ok(!um.withinQuota('t2', 'requests'));
+});
+
+test('within quota returns true when under limit', () => {
+  const um = new UsageMetering();
+  um.setQuota('t3', { requestsPerMonth: 100 });
+  um.record('t3', { type: 'api_call', quantity: 10 });
+  assert.ok(um.withinQuota('t3', 'requests'));
+});
+
+// ── Multi-tenancy ─────────────────────────────────────────────────────────────
+process.stdout.write('\n[ MultiTenancy ]\n');
+
+test('creates and retrieves a tenant', () => {
+  const mt = new MultiTenancy();
+  const t  = mt.create({ name: 'Acme', plan: 'growth' });
+  assert.ok(t.tenantId.startsWith('tenant-'));
+  assert.strictEqual(mt.get(t.tenantId).name, 'Acme');
+});
+
+test('suspends and activates a tenant', () => {
+  const mt = new MultiTenancy();
+  const t  = mt.create({ name: 'Beta Corp' });
+  mt.suspend(t.tenantId);
+  assert.ok(!mt.isActive(t.tenantId));
+  mt.activate(t.tenantId);
+  assert.ok(mt.isActive(t.tenantId));
+});
+
+// ── Workflow Tracer ───────────────────────────────────────────────────────────
+process.stdout.write('\n[ WorkflowTracer ]\n');
+
+test('starts and ends a trace', () => {
+  const wt    = new WorkflowTracer();
+  const trace = wt.startTrace({ workflowId: 'wf-trace-1' });
+  assert.ok(trace.traceId.startsWith('trace-'));
+  wt.endTrace(trace.traceId, { success: true });
+  const finished = wt.get(trace.traceId);
+  assert.strictEqual(finished.status, 'ok');
+  assert.ok(finished.durationMs >= 0);
+});
+
+test('adds and ends spans within a trace', () => {
+  const wt    = new WorkflowTracer();
+  const trace = wt.startTrace({ workflowId: 'wf-trace-2' });
+  const span  = wt.addSpan(trace.traceId, { name: 'intent-analysis', kind: 'internal' });
+  assert.ok(span.spanId.startsWith('span-'));
+  wt.endSpan(trace.traceId, span.spanId, { success: true });
+  assert.strictEqual(wt.get(trace.traceId).spans[0].status, 'ok');
+});
+
+test('workflow tracer stats', () => {
+  const wt = new WorkflowTracer();
+  wt.startTrace({ workflowId: 'wf-s1' });
+  const s = wt.stats();
+  assert.strictEqual(s.running, 1);
+});
+
+// ── Agent Tracer ──────────────────────────────────────────────────────────────
+process.stdout.write('\n[ AgentTracer ]\n');
+
+test('starts and ends an agent span', () => {
+  const at   = new AgentTracer();
+  const span = at.startSpan({ agentId: 'intent-agent', agentName: 'IntentAgent', traceId: 'trace-1' });
+  assert.ok(span.spanId.startsWith('aspan-'));
+  at.endSpan(span.spanId, { output: { industry: 'fintech' }, success: true });
+  const ended = at.get(span.spanId);
+  assert.strictEqual(ended.status, 'ok');
+  assert.ok(ended.output.industry === 'fintech');
+});
+
+test('lists spans by trace', () => {
+  const at = new AgentTracer();
+  at.startSpan({ agentId: 'a1', agentName: 'A1', traceId: 'tid-1' });
+  at.startSpan({ agentId: 'a2', agentName: 'A2', traceId: 'tid-1' });
+  at.startSpan({ agentId: 'a3', agentName: 'A3', traceId: 'tid-2' });
+  assert.strictEqual(at.listByTrace('tid-1').length, 2);
+  assert.strictEqual(at.listByTrace('tid-2').length, 1);
+});
+
+// ── Metrics ───────────────────────────────────────────────────────────────────
+process.stdout.write('\n[ Metrics ]\n');
+
+test('increments a counter', () => {
+  const m = new Metrics();
+  m.increment('requests');
+  m.increment('requests', 5);
+  assert.strictEqual(m.getCounter('requests'), 6);
+});
+
+test('sets a gauge', () => {
+  const m = new Metrics();
+  m.gauge('active_sessions', 42);
+  assert.strictEqual(m.getGauge('active_sessions'), 42);
+});
+
+test('histogram summary has correct shape', () => {
+  const m = new Metrics();
+  for (let i = 1; i <= 100; i++) m.observe('latency_ms', i);
+  const s = m.getSummary('latency_ms');
+  assert.strictEqual(s.count, 100);
+  assert.strictEqual(s.min,   1);
+  assert.strictEqual(s.max,   100);
+  assert.ok(s.p95 >= s.p50);
+});
+
+test('dump returns all metric types', () => {
+  const m = new Metrics();
+  m.increment('hits');
+  m.gauge('workers', 4);
+  m.observe('dur', 50);
+  const d = m.dump();
+  assert.ok('hits'    in d.counters);
+  assert.ok('workers' in d.gauges);
+  assert.ok('dur'     in d.histograms);
+});
+
+// ── Cost Tracker ──────────────────────────────────────────────────────────────
+process.stdout.write('\n[ CostTracker ]\n');
+
+test('records token cost', () => {
+  const ct = new CostTracker();
+  const e  = ct.recordTokens({ tenantId: 't1', model: 'gpt-4o', inputTokens: 1000, outputTokens: 500 });
+  assert.ok(e.totalCostUsd > 0);
+  assert.ok(ct.getTotals('t1').totalCostUsd > 0);
+});
+
+test('uses default pricing for unknown model', () => {
+  const ct = new CostTracker();
+  const e  = ct.recordTokens({ tenantId: 't1', model: 'unknown-model', inputTokens: 1000, outputTokens: 0 });
+  assert.ok(e.totalCostUsd > 0);
+});
+
+test('global summary aggregates across tenants', () => {
+  const ct = new CostTracker();
+  ct.recordTokens({ tenantId: 't1', model: 'gpt-4o-mini', inputTokens: 500, outputTokens: 200 });
+  ct.recordTokens({ tenantId: 't2', model: 'gpt-4o-mini', inputTokens: 300, outputTokens: 100 });
+  const s = ct.globalSummary();
+  assert.strictEqual(s.tenants, 2);
+  assert.ok(s.totalCostUsd > 0);
+});
+
+test('DEFAULT_PRICING contains gpt-4o', () => {
+  assert.ok(DEFAULT_PRICING['gpt-4o']);
+  assert.ok(DEFAULT_PRICING['gpt-4o'].input > 0);
+});
+
+// ── Health Dashboard ──────────────────────────────────────────────────────────
+process.stdout.write('\n[ HealthDashboard ]\n');
+
+testAsync('reports healthy when all checks pass', async () => {
+  const hd = new HealthDashboard();
+  hd.register('db',  async () => ({ healthy: true }),  { critical: true });
+  hd.register('api', async () => ({ healthy: true }));
+  const r = await hd.check(true);
+  assert.strictEqual(r.status, 'healthy');
+  assert.ok(r.services.db.healthy);
+});
+
+testAsync('reports unhealthy when critical check fails', async () => {
+  const hd = new HealthDashboard();
+  hd.register('db', async () => ({ healthy: false }), { critical: true });
+  const r = await hd.check(true);
+  assert.strictEqual(r.status, 'unhealthy');
+});
+
+testAsync('reports degraded when non-critical check fails', async () => {
+  const hd = new HealthDashboard();
+  hd.register('db',     async () => ({ healthy: true }),  { critical: true });
+  hd.register('cache',  async () => ({ healthy: false }));
+  const r = await hd.check(true);
+  assert.strictEqual(r.status, 'degraded');
+});
+
+testAsync('handles check throwing an error gracefully', async () => {
+  const hd = new HealthDashboard();
+  hd.register('broken', async () => { throw new Error('connection refused'); });
+  const r = await hd.check(true);
+  assert.ok(r.services.broken.error);
+  assert.ok(!r.services.broken.healthy);
+});
+
+// ── Plugin Framework ──────────────────────────────────────────────────────────
+process.stdout.write('\n[ PluginFramework ]\n');
+
+test('loads a plugin with agents, skills, and packs', () => {
+  const pf = new PluginFramework();
+  const manifest = pf.load({
+    id: 'my-plugin',
+    name: 'My Plugin',
+    version: '1.0.0',
+    agents: [{ id: 'my-plugin:agent1', name: 'Agent1', kind: 'custom', version: '1.0.0', handler: async () => {} }],
+    skills: [{ id: 'my-plugin:skill1', name: 'Skill1', kind: 'tool',   version: '1.0.0', execute: async () => {} }],
+    packs:  [{ id: 'my-plugin:pack1',  name: 'Pack1',  version: '1.0.0' }],
+    templates: [{ id: 'tpl1', name: 'CI Pipeline', description: 'Basic CI' }],
+  });
+  assert.strictEqual(manifest.summary.agents, 1);
+  assert.strictEqual(manifest.summary.skills, 1);
+  assert.strictEqual(manifest.summary.packs,  1);
+  assert.strictEqual(manifest.summary.templates, 1);
+});
+
+test('lists and retrieves loaded plugins', () => {
+  const pf = new PluginFramework();
+  pf.load({ id: 'plug-a', name: 'A', version: '1.0.0' });
+  pf.load({ id: 'plug-b', name: 'B', version: '2.0.0' });
+  assert.strictEqual(pf.list().length, 2);
+  assert.ok(pf.get('plug-a'));
+});
+
+test('lists workflow templates across plugins', () => {
+  const pf = new PluginFramework();
+  pf.load({ id: 'p1', name: 'P1', version: '1.0.0', templates: [{ id: 't1', name: 'CI' }, { id: 't2', name: 'CD' }] });
+  pf.load({ id: 'p2', name: 'P2', version: '1.0.0', templates: [{ id: 't3', name: 'Release' }] });
+  assert.strictEqual(pf.listTemplates().length, 3);
+});
+
+test('unloads a plugin', () => {
+  const pf = new PluginFramework();
+  pf.load({ id: 'tmp-plugin', name: 'Tmp', version: '1.0.0' });
+  assert.ok(pf.unload('tmp-plugin'));
+  assert.strictEqual(pf.get('tmp-plugin'), null);
+});
+
+test('reloading a plugin replaces the previous version', () => {
+  const pf = new PluginFramework();
+  pf.load({ id: 'ver-plugin', name: 'V1', version: '1.0.0' });
+  pf.load({ id: 'ver-plugin', name: 'V2', version: '2.0.0' });
+  assert.strictEqual(pf.get('ver-plugin').version, '2.0.0');
+  assert.strictEqual(pf.list().length, 1);
+});
+
+// ── Extended HoareRuntime status() ────────────────────────────────────────────
+process.stdout.write('\n[ Extended HoareRuntime status() ]\n');
+
+testAsync('status() includes extended service stats', async () => {
+  const runtime = new HoareRuntime({ persistMemory: false, logLevel: 'ERROR' });
+  const s = runtime.status();
+  assert.ok(s.agents);
+  assert.ok(s.skills);
+  assert.ok(s.marketplace);
+  assert.ok(s.enterprise);
+  assert.ok(s.observability);
+  assert.ok(s.plugins);
+});
+
 // ─── Summary ──────────────────────────────────────────────────────────────────
 // Wait for all async tests
 setImmediate(() => {
