@@ -1,0 +1,6 @@
+{
+  "industry": "manufacturing",
+  "agents": ["prompt-receiver", "intent-agent", "planner-agent"],
+  "services": ["production-api", "iot-ingestion", "quality-analytics", "plant-dashboard"],
+  "complianceRequirements": ["ISO 9001", "ISO 27001", "Safety Governance"]
+}

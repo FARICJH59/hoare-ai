@@ -1,0 +1,6 @@
+{
+  "industry": "retail",
+  "agents": ["prompt-receiver", "intent-agent", "planner-agent"],
+  "services": ["catalog-api", "inventory-service", "customer-analytics", "commerce-dashboard"],
+  "complianceRequirements": ["PCI-DSS", "GDPR", "Data Retention Policy"]
+}

@@ -1,0 +1,10 @@
+{
+  "workflow": "infrastructure-deployment",
+  "tasks": [
+    "design_architecture",
+    "generate_services",
+    "configure_infrastructure",
+    "deploy",
+    "verify"
+  ]
+}
