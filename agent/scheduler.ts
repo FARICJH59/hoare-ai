@@ -83,7 +83,13 @@ export class Scheduler {
   private async tick(): Promise<void> {
     const now = Date.now();
     for (const job of this.jobs.values()) {
-      if (job.status === "cancelled" || job.status === "running") continue;
+      if (
+        job.status === "cancelled" ||
+        job.status === "running" ||
+        job.status === "completed" ||
+        job.status === "failed"
+      )
+        continue;
       if (now < job.nextRunAt) continue;
 
       job.status = "running";
