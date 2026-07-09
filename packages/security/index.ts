@@ -26,24 +26,27 @@ export function hasPermission(roles: Role[], required: Permission): boolean {
 // ── Input sanitisation ────────────────────────────────────────────────────────
 
 /**
- * Strip HTML/script tags and trim whitespace from a user-supplied string.
- * Use before rendering user input in any context.
+ * Sanitise a user-supplied string for safe rendering.
+ *
+ * Strategy: character-by-character entity encoding of the six HTML-special
+ * characters (no regex tag-stripping, which is both ReDoS-prone and
+ * incomplete). The output is safe to embed in HTML attribute values and text
+ * nodes.
  */
 export function sanitizeString(input: string): string {
-  return input
-    .replace(/<[^>]*>/g, "")
-    .replace(/[<>&"'`]/g, (c) => {
-      const escapes: Record<string, string> = {
-        "<": "&lt;",
-        ">": "&gt;",
-        "&": "&amp;",
-        '"': "&quot;",
-        "'": "&#39;",
-        "`": "&#96;",
-      };
-      return escapes[c] ?? c;
-    })
-    .trim();
+  const entityMap: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+    "`": "&#96;",
+  };
+  let result = "";
+  for (const ch of input) {
+    result += entityMap[ch] ?? ch;
+  }
+  return result.trim();
 }
 
 // ── Token utilities ───────────────────────────────────────────────────────────

@@ -28,16 +28,18 @@ describe("RBAC", () => {
 });
 
 describe("sanitizeString", () => {
-  it("removes HTML tags", () => {
-    expect(sanitizeString("<script>alert(1)</script>")).not.toContain("<script>");
+  it("removes HTML tags — entity-encodes angle brackets", () => {
+    const result = sanitizeString("<script>alert(1)</script>");
+    // The sanitizer entity-encodes < and > so no raw tags remain
+    expect(result).not.toContain("<script>");
+    expect(result).toContain("&lt;script&gt;");
   });
 
-  it("escapes angle brackets and removes tags", () => {
+  it("entity-encodes angle brackets", () => {
     const result = sanitizeString("<b>bold</b>");
     expect(result).not.toContain("<b>");
-    expect(result).not.toContain("</b>");
-    // The sanitizer strips tags — the text content should remain
-    expect(result).toContain("bold");
+    expect(result).toContain("&lt;");
+    expect(result).toContain("&gt;");
   });
 
   it("trims whitespace", () => {

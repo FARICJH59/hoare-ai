@@ -10,7 +10,7 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - DATABASE_URL=******postgres:5432/hoare_ai
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-hoare}:${POSTGRES_PASSWORD:-hoare_secret}@postgres:5432/hoare_ai
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-prod}
       - API_KEYS=${API_KEYS:-dev-key}
