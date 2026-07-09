@@ -22,7 +22,7 @@ function requireFetch() {
 function createQgpsClient(options = {}) {
   const baseUrl = options.baseUrl || process.env.QGPS_URL || "";
   const apiKey = options.apiKey || process.env.QGPS_API_KEY || "";
-  const mockMode = options.mockMode ?? process.env.QGPS_MOCK_MODE === "true" || (!baseUrl && !apiKey);
+  const mockMode = options.mockMode ?? (process.env.QGPS_MOCK_MODE === "true" || (!baseUrl && !apiKey));
   const timeoutMs = Number(options.timeoutMs || process.env.QGPS_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
 
   async function request(method, endpoint, body) {
