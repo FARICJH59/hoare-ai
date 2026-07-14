@@ -1,4 +1,4 @@
-export { authMiddleware, issueToken } from "./auth";
+export { authMiddleware, issueToken, requirePermission } from "./auth";
 export type { AuthenticatedRequest } from "./auth";
 
 export { rateLimit } from "./rateLimit";

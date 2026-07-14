@@ -1,15 +1,20 @@
 import { Router, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
+import type { Agent } from "../agent/agent";
 
-export interface Session {
+export interface UnifiedSession {
   id: string;
   name?: string;
+  agent?: Agent;
   metadata: Record<string, unknown>;
   createdAt: number;
   updatedAt: number;
 }
 
-const sessionStore: Map<string, Session> = new Map();
+/** @deprecated Use UnifiedSession instead */
+export type Session = UnifiedSession;
+
+export const sessionStore: Map<string, UnifiedSession> = new Map();
 
 export const sessionRouter = Router();
 
