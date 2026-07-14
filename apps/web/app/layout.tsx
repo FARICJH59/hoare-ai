@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="bg-hoare-dark text-white min-h-screen antialiased">
         {children}
-        <Analytics />
+        {process.env.VERCEL_ENV === "production" && <Analytics />}
       </body>
     </html>
   );
