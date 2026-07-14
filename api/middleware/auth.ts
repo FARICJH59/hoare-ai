@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import * as jwt from "jsonwebtoken";
+import { hasPermission } from "../../packages/security";
+import type { Role, Permission } from "../../packages/shared-types";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-jwt-secret-not-for-production";
 const API_KEYS = new Set((process.env.API_KEYS ?? "").split(",").filter(Boolean));
@@ -8,7 +10,7 @@ export interface AuthenticatedRequest extends Request {
   auth?: {
     type: "jwt" | "apikey";
     subject?: string;
-    roles?: string[];
+    roles?: Role[];
   };
 }
 
@@ -43,7 +45,7 @@ export function authMiddleware(
       req.auth = {
         type: "jwt",
         subject: payload.sub,
-        roles: Array.isArray(payload.roles) ? (payload.roles as string[]) : [],
+        roles: Array.isArray(payload.roles) ? (payload.roles as Role[]) : [],
       };
       next();
       return;
@@ -69,4 +71,40 @@ export function issueToken(
   expiresIn: string | number = "8h"
 ): string {
   return jwt.sign({ sub: subject, roles }, JWT_SECRET, { expiresIn } as jwt.SignOptions);
+}
+
+
+/**
+ * Factory that creates a middleware requiring a specific permission.
+ * Must be mounted AFTER authMiddleware so req.auth is populated.
+ *
+ * Usage: app.use("/api/execute", requirePermission("execute"));
+ */
+export function requirePermission(required: Permission) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    const roles = (req.auth?.roles ?? []) as Role[];
+
+    // In development, allow unauthenticated access (matches authMiddleware behavior)
+    if (!req.auth && process.env.NODE_ENV !== "production") {
+      next();
+      return;
+    }
+
+    // API key users get service-level permissions
+    if (req.auth?.type === "apikey") {
+      if (hasPermission(["service"], required)) {
+        next();
+        return;
+      }
+      res.status(403).json({ error: `Insufficient permissions. Required: ${required}.` });
+      return;
+    }
+
+    if (hasPermission(roles, required)) {
+      next();
+      return;
+    }
+
+    res.status(403).json({ error: `Insufficient permissions. Required: ${required}.` });
+  };
 }

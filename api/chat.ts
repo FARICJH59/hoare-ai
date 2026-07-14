@@ -3,34 +3,35 @@ import { v4 as uuidv4 } from "uuid";
 import { Agent } from "../agent/agent";
 import { AgentMemory } from "../agent/memory";
 import { allTools } from "../tools";
+import { sessionStore, type UnifiedSession } from "./session";
 
-interface Session {
-  id: string;
-  agent: Agent;
-  createdAt: number;
-  lastActiveAt: number;
-}
-
-const sessions: Map<string, Session> = new Map();
-
-function getOrCreateSession(sessionId: string): Session {
-  if (!sessions.has(sessionId)) {
-    const agent = new Agent({
-      name: `session-agent-${sessionId}`,
-      description: "Auto-created agent for chat session.",
-      tools: allTools,
-    });
-    const session: Session = {
-      id: sessionId,
-      agent,
-      createdAt: Date.now(),
-      lastActiveAt: Date.now(),
-    };
-    sessions.set(sessionId, session);
-    return session;
+function getOrCreateSession(sessionId: string): UnifiedSession {
+  const existing = sessionStore.get(sessionId);
+  if (existing) {
+    existing.updatedAt = Date.now();
+    if (!existing.agent) {
+      existing.agent = new Agent({
+        name: `session-agent-${sessionId}`,
+        description: "Auto-created agent for chat session.",
+        tools: allTools,
+      });
+    }
+    return existing;
   }
-  const session = sessions.get(sessionId)!;
-  session.lastActiveAt = Date.now();
+  const agent = new Agent({
+    name: `session-agent-${sessionId}`,
+    description: "Auto-created agent for chat session.",
+    tools: allTools,
+  });
+  const now = Date.now();
+  const session: UnifiedSession = {
+    id: sessionId,
+    agent,
+    metadata: {},
+    createdAt: now,
+    updatedAt: now,
+  };
+  sessionStore.set(sessionId, session);
   return session;
 }
 
@@ -49,7 +50,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   const session = getOrCreateSession(sid);
 
   try {
-    const result = await session.agent.run(message.trim());
+    const result = await session.agent!.run(message.trim());
     res.json({
       sessionId: sid,
       agentId: result.agentId,
@@ -67,8 +68,8 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 // GET /api/chat/:sessionId/history — retrieve conversation history
 chatRouter.get("/:sessionId/history", (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const session = sessions.get(sessionId);
-  if (!session) {
+  const session = sessionStore.get(sessionId);
+  if (!session || !session.agent) {
     res.status(404).json({ error: `Session "${sessionId}" not found.` });
     return;
   }
@@ -79,8 +80,8 @@ chatRouter.get("/:sessionId/history", (req: Request, res: Response) => {
 // DELETE /api/chat/:sessionId — clear a session's conversation history
 chatRouter.delete("/:sessionId", (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const session = sessions.get(sessionId);
-  if (!session) {
+  const session = sessionStore.get(sessionId);
+  if (!session || !session.agent) {
     res.status(404).json({ error: `Session "${sessionId}" not found.` });
     return;
   }
@@ -88,4 +89,5 @@ chatRouter.delete("/:sessionId", (req: Request, res: Response) => {
   res.json({ sessionId, cleared: true });
 });
 
-export { sessions };
+// Re-export unified store under the old name for backward compatibility
+export { sessionStore as sessions };

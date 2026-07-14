@@ -3,7 +3,7 @@ import { chatRouter } from "./chat";
 import { executeRouter } from "./execute";
 import { toolsRouter } from "./tools";
 import { sessionRouter } from "./session";
-import { securityHeaders, auditLogger, rateLimit, requireJson } from "./middleware";
+import { securityHeaders, auditLogger, rateLimit, requireJson, authMiddleware } from "./middleware";
 import { structuredLogger, metrics } from "./observability";
 import { allTools } from "../tools";
 
@@ -50,6 +50,9 @@ export function createApp(): express.Application {
     res.setHeader("Content-Type", "text/plain; version=0.0.4");
     res.send(metrics.toPrometheusText());
   });
+
+  // ── Auth gate — all /api/* routes require authentication in production ────
+  app.use("/api", authMiddleware);
 
   // ── API routes ─────────────────────────────────────────────────────────────
   app.use("/api/chat", chatRouter);
