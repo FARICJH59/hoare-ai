@@ -10,10 +10,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@hoare-ai/shared-types": "*",
+    "@vercel/analytics": "^2.0.1",
     "next": "^14.2.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "@hoare-ai/shared-types": "*"
+    "react-dom": "^18.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
