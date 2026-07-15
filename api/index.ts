@@ -6,6 +6,12 @@ import { sessionRouter } from "./session";
 import { securityHeaders, auditLogger, rateLimit, requireJson, authMiddleware } from "./middleware";
 import { structuredLogger, metrics } from "./observability";
 import { allTools } from "../tools";
+import { PluginRegistry } from "../packages/plugin-system";
+import { demoPlugin } from "../plugins/demo";
+
+// ── Plugin system ────────────────────────────────────────────────────────────
+const pluginRegistry = new PluginRegistry();
+pluginRegistry.load(demoPlugin);
 
 const START_TIME = Date.now();
 const VERSION = process.env.npm_package_version ?? "1.0.0";
@@ -60,11 +66,21 @@ export function createApp(): express.Application {
   app.use("/api/tools", toolsRouter);
   app.use("/api/session", sessionRouter);
 
-  // Capability discovery
+  // Capability discovery (backward-compatible: includes plugin tools)
   app.get("/api/capabilities", (_req: Request, res: Response) => {
+    const pluginTools = pluginRegistry.getAllTools();
+    const combined = [...allTools, ...pluginTools.filter((pt) => !allTools.some((t) => t.name === pt.name))];
     res.json({
-      count: allTools.length,
-      capabilities: allTools.map((t) => ({ id: t.name, name: t.name, description: t.description })),
+      count: combined.length,
+      capabilities: combined.map((t) => ({ id: t.name, name: t.name, description: t.description })),
+    });
+  });
+
+  // Plugin discovery
+  app.get("/api/plugins", (_req: Request, res: Response) => {
+    res.json({
+      count: pluginRegistry.size(),
+      plugins: pluginRegistry.listPlugins(),
     });
   });
 
