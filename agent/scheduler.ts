@@ -121,6 +121,23 @@ export class Scheduler {
     return Array.from(this.jobs.values());
   }
 
+  /** Remove all jobs in a terminal state (completed, failed, cancelled). */
+  cleanup(): number {
+    let removed = 0;
+    for (const [id, job] of this.jobs) {
+      if (job.status === "completed" || job.status === "failed" || job.status === "cancelled") {
+        this.jobs.delete(id);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
+  /** Number of jobs currently tracked. */
+  size(): number {
+    return this.jobs.size;
+  }
+
   isRunning(): boolean {
     return this.timer !== null;
   }

@@ -22,6 +22,7 @@ export interface WorkflowContext {
 /**
  * WorkflowEngine executes WorkflowDefinitions by running each step in
  * dependency order. Steps with no dependsOn are executed concurrently.
+ * Supports per-step retries, timeouts, and dependent-step skipping.
  */
 export class WorkflowEngine {
   private handlers: Map<string, StepHandler>;
@@ -60,7 +61,13 @@ export class WorkflowEngine {
 
     try {
       await this.executeSteps(definition, context, run);
-      run.status = "completed";
+      const failedStep = Array.from(context.stepResults.values()).find((r) => r.status === "failed");
+      if (failedStep) {
+        run.status = "failed";
+        run.error = failedStep.error;
+      } else {
+        run.status = "completed";
+      }
     } catch (err) {
       run.status = "failed";
       run.error = err instanceof Error ? err.message : String(err);
@@ -77,46 +84,77 @@ export class WorkflowEngine {
     run: WorkflowRun
   ): Promise<void> {
     const completed = new Set<string>();
+    const failed = new Set<string>();
     const pending = [...definition.steps];
 
     while (pending.length > 0) {
-      // Find steps whose dependencies are all satisfied
-      const ready = pending.filter((s) => s.dependsOn.every((dep) => completed.has(dep)));
+      const ready = pending.filter((s) => s.dependsOn.every((dep) => completed.has(dep) || failed.has(dep)));
       if (ready.length === 0 && pending.length > 0) {
         throw new Error("Workflow deadlock: circular or unresolvable dependencies.");
       }
 
-      // Execute ready steps concurrently
       await Promise.all(
         ready.map(async (step) => {
           const resultRef = context.stepResults.get(step.id)!;
-          resultRef.status = "running";
-          const stepStart = Date.now();
 
-          try {
-            const handler = this.handlers.get(step.capabilityId);
-            if (!handler) {
-              throw new Error(`No handler registered for capability "${step.capabilityId}".`);
-            }
-            resultRef.result = await handler(step.params, context);
-            resultRef.status = "completed";
-          } catch (err) {
-            resultRef.status = "failed";
-            resultRef.error = err instanceof Error ? err.message : String(err);
-            // Propagate failure
-            throw err;
-          } finally {
-            resultRef.durationMs = Date.now() - stepStart;
+          // Skip if any dependency failed
+          const depFailed = step.dependsOn.some((dep) => failed.has(dep));
+          if (depFailed) {
+            resultRef.status = "skipped";
+            resultRef.error = "Skipped: upstream dependency failed.";
+            failed.add(step.id);
+            const idx = pending.indexOf(step);
+            if (idx !== -1) pending.splice(idx, 1);
+            return;
           }
 
-          completed.add(step.id);
-          // Remove from pending
+          resultRef.status = "running";
+          const maxRetries = step.retries ?? 0;
+          const timeoutMs = step.timeoutMs ?? 0;
+          const stepStart = Date.now();
+          let lastError: string | undefined;
+
+          for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+              const handler = this.handlers.get(step.capabilityId);
+              if (!handler) {
+                throw new Error(`No handler registered for capability "${step.capabilityId}".`);
+              }
+              const execution = handler(step.params, context);
+              if (timeoutMs > 0) {
+                resultRef.result = await Promise.race([
+                  execution,
+                  new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error(`Step "${step.id}" timed out after ${timeoutMs}ms.`)), timeoutMs)
+                  ),
+                ]);
+              } else {
+                resultRef.result = await execution;
+              }
+              resultRef.status = "completed";
+              lastError = undefined;
+              break;
+            } catch (err) {
+              lastError = err instanceof Error ? err.message : String(err);
+              if (attempt < maxRetries) continue;
+            }
+          }
+
+          resultRef.durationMs = Date.now() - stepStart;
+
+          if (lastError) {
+            resultRef.status = "failed";
+            resultRef.error = lastError;
+            failed.add(step.id);
+          } else {
+            completed.add(step.id);
+          }
+
           const idx = pending.indexOf(step);
           if (idx !== -1) pending.splice(idx, 1);
         })
       );
 
-      // Update run.stepResults from context
       run.stepResults = Array.from(context.stepResults.values());
     }
   }

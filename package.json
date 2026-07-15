@@ -6,7 +6,8 @@
   "types": "dist/api/index.d.ts",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "plugins/*"
   ],
   "scripts": {
     "build": "tsc",
@@ -22,7 +23,16 @@
     "prepare": "node -e \"try{require('husky').install()}catch(e){}\"",
     "clean": "rm -rf dist .turbo"
   },
-  "keywords": ["ai", "agent", "swarm", "quantum", "robotics", "ml", "finance", "qgps"],
+  "keywords": [
+    "ai",
+    "agent",
+    "swarm",
+    "quantum",
+    "robotics",
+    "ml",
+    "finance",
+    "qgps"
+  ],
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
