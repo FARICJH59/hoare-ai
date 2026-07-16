@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     line_items: [{ price: priceId, quantity: 1 }],
     customer_email: user.email ?? undefined, client_reference_id: user.id,
     metadata: { supabaseUserId: user.id },
+    subscription_data: { metadata: { supabaseUserId: user.id } },
     success_url: `${baseUrl}/dashboard?checkout=success`,
     cancel_url: `${baseUrl}/dashboard?checkout=cancelled`,
   });
