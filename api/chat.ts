@@ -4,8 +4,24 @@ import { Agent } from "../agent/agent";
 import { AgentMemory } from "../agent/memory";
 import { allTools } from "../tools";
 import { sessionStore, type UnifiedSession } from "./session";
+import { sessionRepository } from "./storage/repositories";
+import type { AuthenticatedRequest } from "./middleware/auth";
+import { enforceEntitlement, recordUsageEvent } from "./billing/entitlements";
 
-function getOrCreateSession(sessionId: string): UnifiedSession {
+function resolveOrgId(req: AuthenticatedRequest): string {
+  if (req.auth?.type === "jwt" && req.auth.subject) return req.auth.subject;
+  return typeof req.headers["x-org-id"] === "string" ? req.headers["x-org-id"] : "default-org";
+}
+
+async function persistSession(session: UnifiedSession): Promise<void> {
+  try {
+    await sessionRepository.upsert(session);
+  } catch {
+    // Keep chat available when the durable store is not configured or temporarily unavailable.
+  }
+}
+
+async function getOrCreateSession(sessionId: string): Promise<UnifiedSession> {
   const existing = sessionStore.get(sessionId);
   if (existing) {
     existing.updatedAt = Date.now();
@@ -16,8 +32,23 @@ function getOrCreateSession(sessionId: string): UnifiedSession {
         tools: allTools,
       });
     }
+    await persistSession(existing);
     return existing;
   }
+
+  const persisted = await sessionRepository.get(sessionId).catch(() => undefined);
+  if (persisted) {
+    persisted.agent = new Agent({
+      name: `session-agent-${sessionId}`,
+      description: "Auto-created agent for chat session.",
+      tools: allTools,
+    });
+    persisted.updatedAt = Date.now();
+    sessionStore.set(sessionId, persisted);
+    await persistSession(persisted);
+    return persisted;
+  }
+
   const agent = new Agent({
     name: `session-agent-${sessionId}`,
     description: "Auto-created agent for chat session.",
@@ -32,13 +63,14 @@ function getOrCreateSession(sessionId: string): UnifiedSession {
     updatedAt: now,
   };
   sessionStore.set(sessionId, session);
+  await persistSession(session);
   return session;
 }
 
 export const chatRouter = Router();
 
 // POST /api/chat — send a message and get an agent response
-chatRouter.post("/", async (req: Request, res: Response) => {
+chatRouter.post("/", async (req: AuthenticatedRequest, res: Response) => {
   const { message, sessionId } = req.body as { message?: string; sessionId?: string };
 
   if (!message || typeof message !== "string" || message.trim() === "") {
@@ -47,10 +79,17 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   }
 
   const sid = sessionId && typeof sessionId === "string" ? sessionId : uuidv4();
-  const session = getOrCreateSession(sid);
 
   try {
+    const orgId = resolveOrgId(req);
+    const entitlement = await enforceEntitlement(orgId, "AGENT_RUN");
+    if (!entitlement.allowed) {
+      res.status(402).json({ error: "Action blocked: plan limit reached for AGENT_RUN.", governanceDecision: entitlement.governanceDecision });
+      return;
+    }
+    const session = await getOrCreateSession(sid);
     const result = await session.agent!.run(message.trim());
+    await recordUsageEvent({ orgId, userId: req.auth?.subject, eventType: "AGENT_RUN", eventContext: { agentId: result.agentId, sessionId: sid } });
     res.json({
       sessionId: sid,
       agentId: result.agentId,
