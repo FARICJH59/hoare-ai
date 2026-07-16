@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { defaultLocale, dictionaries, isLocale, type Locale, type TranslationKey } from "./config";
 
 type I18nContextValue = {
@@ -11,14 +11,13 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function initialLocale(): Locale {
-  if (typeof window === "undefined") return defaultLocale;
-  const stored = window.localStorage.getItem("tf.locale");
-  return stored && isLocale(stored) ? stored : defaultLocale;
-}
-
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("tf.locale");
+    if (stored && isLocale(stored)) setLocaleState(stored);
+  }, []);
 
   const value = useMemo<I18nContextValue>(() => ({
     locale,
