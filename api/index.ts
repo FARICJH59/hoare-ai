@@ -6,6 +6,7 @@ import { sessionRouter } from "./session";
 import { securityHeaders, auditLogger, rateLimit, requireJson, authMiddleware } from "./middleware";
 import { structuredLogger, metrics } from "./observability";
 import { allTools } from "../tools";
+import { registerPhaseRoutes } from "./phaseRoutes";
 
 const START_TIME = Date.now();
 const VERSION = process.env.npm_package_version ?? "1.0.0";
@@ -59,6 +60,9 @@ export function createApp(): express.Application {
   app.use("/api/execute", executeRouter);
   app.use("/api/tools", toolsRouter);
   app.use("/api/session", sessionRouter);
+
+  // Phase 0-22 standalone/interoperable scaffold routes
+  registerPhaseRoutes(app);
 
   // Capability discovery
   app.get("/api/capabilities", (_req: Request, res: Response) => {
