@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { allTools } from "../tools";
+import { jobRepository } from "./storage/repositories";
 
 export type ExecutionStatus = "pending" | "running" | "completed" | "failed";
 
@@ -16,6 +17,26 @@ export interface ExecutionJob {
 }
 
 const jobs: Map<string, ExecutionJob> = new Map();
+
+async function persistJob(job: ExecutionJob): Promise<void> {
+  try {
+    await jobRepository.upsert(job);
+  } catch (err) {
+    console.warn("job_persist_failed", err instanceof Error ? err.message : err);
+  }
+}
+
+export async function listExecutionJobs(): Promise<ExecutionJob[]> {
+  try {
+    const persisted = await jobRepository.list();
+    const merged = new Map<string, ExecutionJob>();
+    for (const job of persisted) merged.set(job.id, job);
+    for (const job of jobs.values()) merged.set(job.id, job);
+    return Array.from(merged.values());
+  } catch {
+    return Array.from(jobs.values());
+  }
+}
 
 export const executeRouter = Router();
 
@@ -47,11 +68,13 @@ executeRouter.post("/", async (req: Request, res: Response) => {
     createdAt: Date.now(),
   };
   jobs.set(jobId, job);
+  await persistJob(job);
 
   if (runAsync) {
     // Fire-and-forget
     setImmediate(async () => {
       job.status = "running";
+      await persistJob(job);
       try {
         job.result = await tool.execute(job.params);
         job.status = "completed";
@@ -60,6 +83,7 @@ executeRouter.post("/", async (req: Request, res: Response) => {
         job.status = "failed";
       } finally {
         job.completedAt = Date.now();
+        await persistJob(job);
       }
     });
     res.status(202).json({ jobId, status: "pending" });
@@ -68,23 +92,33 @@ executeRouter.post("/", async (req: Request, res: Response) => {
 
   // Synchronous execution
   job.status = "running";
+  await persistJob(job);
   try {
     job.result = await tool.execute(job.params);
     job.status = "completed";
     job.completedAt = Date.now();
+    await persistJob(job);
     res.json({ jobId, status: job.status, result: job.result });
   } catch (err) {
     job.error = err instanceof Error ? err.message : String(err);
     job.status = "failed";
     job.completedAt = Date.now();
+    await persistJob(job);
     res.status(500).json({ jobId, status: job.status, error: job.error });
   }
 });
 
 // GET /api/execute/:jobId — poll job status and result
-executeRouter.get("/:jobId", (req: Request, res: Response) => {
+executeRouter.get("/:jobId", async (req: Request, res: Response) => {
   const { jobId } = req.params;
-  const job = jobs.get(jobId);
+  let job = jobs.get(jobId);
+  if (!job) {
+    try {
+      job = await jobRepository.get(jobId);
+    } catch {
+      job = undefined;
+    }
+  }
   if (!job) {
     res.status(404).json({ error: `Job "${jobId}" not found.` });
     return;
@@ -93,6 +127,6 @@ executeRouter.get("/:jobId", (req: Request, res: Response) => {
 });
 
 // GET /api/execute — list all jobs
-executeRouter.get("/", (_req: Request, res: Response) => {
-  res.json(Array.from(jobs.values()));
+executeRouter.get("/", async (_req: Request, res: Response) => {
+  res.json(await listExecutionJobs());
 });

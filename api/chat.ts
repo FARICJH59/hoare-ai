@@ -4,8 +4,17 @@ import { Agent } from "../agent/agent";
 import { AgentMemory } from "../agent/memory";
 import { allTools } from "../tools";
 import { sessionStore, type UnifiedSession } from "./session";
+import { sessionRepository } from "./storage/repositories";
 
-function getOrCreateSession(sessionId: string): UnifiedSession {
+async function persistSession(session: UnifiedSession): Promise<void> {
+  try {
+    await sessionRepository.upsert(session);
+  } catch {
+    // Keep chat available when the durable store is not configured or temporarily unavailable.
+  }
+}
+
+async function getOrCreateSession(sessionId: string): Promise<UnifiedSession> {
   const existing = sessionStore.get(sessionId);
   if (existing) {
     existing.updatedAt = Date.now();
@@ -16,8 +25,23 @@ function getOrCreateSession(sessionId: string): UnifiedSession {
         tools: allTools,
       });
     }
+    await persistSession(existing);
     return existing;
   }
+
+  const persisted = await sessionRepository.get(sessionId).catch(() => undefined);
+  if (persisted) {
+    persisted.agent = new Agent({
+      name: `session-agent-${sessionId}`,
+      description: "Auto-created agent for chat session.",
+      tools: allTools,
+    });
+    persisted.updatedAt = Date.now();
+    sessionStore.set(sessionId, persisted);
+    await persistSession(persisted);
+    return persisted;
+  }
+
   const agent = new Agent({
     name: `session-agent-${sessionId}`,
     description: "Auto-created agent for chat session.",
@@ -32,6 +56,7 @@ function getOrCreateSession(sessionId: string): UnifiedSession {
     updatedAt: now,
   };
   sessionStore.set(sessionId, session);
+  await persistSession(session);
   return session;
 }
 
@@ -47,9 +72,9 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   }
 
   const sid = sessionId && typeof sessionId === "string" ? sessionId : uuidv4();
-  const session = getOrCreateSession(sid);
 
   try {
+    const session = await getOrCreateSession(sid);
     const result = await session.agent!.run(message.trim());
     res.json({
       sessionId: sid,
