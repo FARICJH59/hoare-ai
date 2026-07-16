@@ -11,11 +11,12 @@ export default function HomePage() {
           Autonomous AI platform — agent runtime, workflow orchestration &amp; QGPS integration.
         </p>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5 mb-12">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-6 mb-12">
           {[
             { href: "/dashboard", label: "Dashboard" },
             { href: "/agents", label: "Agents" },
             { href: "/workflows", label: "Workflows" },
+            { href: "/energy", label: "Energy" },
             { href: "/health", label: "Health" },
             { href: "/sign-in", label: "Sign in" },
           ].map(({ href, label }) => (

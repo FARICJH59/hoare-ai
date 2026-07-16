@@ -19,5 +19,8 @@ export type { IntentClassification, IntentCategory } from "./intent";
 export { PlannerAgent } from "./planner";
 export type { ExecutionPlan, WorkflowStep } from "./planner";
 
+export { EnergyAgent } from "./energy-agent";
+export type { EnergyAgentInput, EnergyDecision, EnergyRecommendedAction } from "./energy-agent";
+
 export { Scheduler } from "./scheduler";
 export type { ScheduledJob, ScheduleOptions, JobStatus, JobFrequency } from "./scheduler";
