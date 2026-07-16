@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { allTools } from "../tools";
+import { getOrgId, invokeGovernedTool, type TenantRequest } from "./platform";
 
 export const toolsRouter = Router();
 
@@ -35,7 +36,13 @@ toolsRouter.post("/:name/invoke", async (req: Request, res: Response) => {
   const params = (req.body?.params as Record<string, unknown> | undefined) ?? {};
 
   try {
-    const result = await tool.execute(params);
+    const result = await invokeGovernedTool({
+      orgId: getOrgId(req),
+      actorId: (req as TenantRequest).tenant?.actorId,
+      tool,
+      params,
+      source: "tools_api",
+    });
     res.json({ tool: name, result });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
