@@ -4,10 +4,11 @@ import { Agent } from "../agent/agent";
 import { AgentMemory } from "../agent/memory";
 import { allTools } from "../tools";
 import { sessionStore, type UnifiedSession } from "./session";
+import { getOrgId, meterUsage, writeAuditLog, type TenantRequest } from "./platform";
 
-function getOrCreateSession(sessionId: string): UnifiedSession {
+function getOrCreateSession(sessionId: string, orgId: string): UnifiedSession {
   const existing = sessionStore.get(sessionId);
-  if (existing) {
+  if (existing && existing.orgId === orgId) {
     existing.updatedAt = Date.now();
     if (!existing.agent) {
       existing.agent = new Agent({
@@ -27,6 +28,7 @@ function getOrCreateSession(sessionId: string): UnifiedSession {
   const session: UnifiedSession = {
     id: sessionId,
     agent,
+    orgId,
     metadata: {},
     createdAt: now,
     updatedAt: now,
@@ -46,11 +48,14 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     return;
   }
 
+  const orgId = getOrgId(req);
   const sid = sessionId && typeof sessionId === "string" ? sessionId : uuidv4();
-  const session = getOrCreateSession(sid);
+  const session = getOrCreateSession(sid, orgId);
 
   try {
     const result = await session.agent!.run(message.trim());
+    meterUsage(orgId, "agent_run", 1, { sessionId: sid, toolsUsed: result.toolsUsed.length });
+    writeAuditLog({ orgId, actor: (req as TenantRequest).auth?.subject, action: "agent.run", resource: sid, metadata: { toolsUsed: result.toolsUsed } });
     res.json({
       sessionId: sid,
       agentId: result.agentId,

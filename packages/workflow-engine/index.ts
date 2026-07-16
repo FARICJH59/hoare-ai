@@ -98,7 +98,24 @@ export class WorkflowEngine {
             if (!handler) {
               throw new Error(`No handler registered for capability "${step.capabilityId}".`);
             }
-            resultRef.result = await handler(step.params, context);
+            const retries = step.retries ?? 0;
+            let attempt = 0;
+            // Retry and timeout support for durable workflow execution.
+            while (true) {
+              try {
+                const execution = handler(step.params, context);
+                resultRef.result = step.timeoutMs
+                  ? await Promise.race([
+                      execution,
+                      new Promise((_resolve, reject) => setTimeout(() => reject(new Error(`Step ${step.id} timed out.`)), step.timeoutMs)),
+                    ])
+                  : await execution;
+                break;
+              } catch (err) {
+                if (attempt >= retries) throw err;
+                attempt++;
+              }
+            }
             resultRef.status = "completed";
           } catch (err) {
             resultRef.status = "failed";

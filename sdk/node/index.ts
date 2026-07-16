@@ -5,6 +5,7 @@ import { URL } from "url";
 export interface HoareAIClientOptions {
   baseUrl: string;
   apiKey?: string;
+  orgId?: string;
   timeout?: number;
 }
 
@@ -101,7 +102,10 @@ export class HoareAIClient {
 
   constructor(options: HoareAIClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
-    this.headers = options.apiKey ? { Authorization: "Bearer " + options.apiKey } : {};
+    this.headers = {
+      ...(options.apiKey ? { Authorization: "Bearer " + options.apiKey } : {}),
+      ...(options.orgId ? { "x-org-id": options.orgId } : {}),
+    };
     this.timeout = options.timeout ?? 30_000;
   }
 
@@ -256,6 +260,30 @@ export class HoareAIClient {
       this.timeout
     );
   }
+
+  // ── Partner integration surface ────────────────────────────────────────────
+
+  async runAgent(message: string): Promise<unknown> {
+    return request(`${this.baseUrl}/agent/run`, "POST", { message }, this.headers, this.timeout);
+  }
+
+  async invokePartnerTool(toolName: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    return request(`${this.baseUrl}/tools/invoke`, "POST", { toolName, params }, this.headers, this.timeout);
+  }
+
+  async executeWorkflow(definition: Record<string, unknown>): Promise<unknown> {
+    return request(`${this.baseUrl}/workflow/execute`, "POST", { definition }, this.headers, this.timeout);
+  }
+
+  async generateFoundation(task: string, params: Record<string, unknown>): Promise<unknown> {
+    return request(`${this.baseUrl}/foundation/generate`, "POST", { task, params }, this.headers, this.timeout);
+  }
+
+  async getBillingUsage(): Promise<unknown> {
+    return request(`${this.baseUrl}/billing/usage`, "GET", undefined, this.headers, this.timeout);
+  }
 }
+
+export const HoareClient = HoareAIClient;
 
 export default HoareAIClient;

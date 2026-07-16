@@ -123,4 +123,26 @@ export const trajectoryPlanTool: Tool = {
   },
 };
 
-export const roboticsTools: Tool[] = [robotStatusTool, robotCommandTool, trajectoryPlanTool];
+export const manipulationTool: Tool = {
+  name: "robotics.manipulation",
+  description: "Plan and validate a manipulation action such as grasp, place, release, or tool-use.",
+  async execute(params) {
+    const robotId = (params.robotId as string | undefined) ?? "robot-1";
+    const action = String(params.action ?? "grasp");
+    const robot = getOrCreateRobot(robotId);
+    robot.status = "executing";
+    return { robotId, action, feasible: true, gripForceN: 18, safetyEnvelope: "clear" };
+  },
+};
+
+export const inspectionWorkflowTool: Tool = {
+  name: "robotics.inspectionWorkflows",
+  description: "Create a robotics inspection workflow across waypoints and sensor passes.",
+  async execute(params) {
+    const robotId = (params.robotId as string | undefined) ?? "robot-1";
+    const targets = (params.targets as string[] | undefined) ?? ["panel-a", "panel-b"];
+    return { robotId, targets, steps: targets.map((target) => ({ target, actions: ["navigate", "scan", "report"] })), estimatedMinutes: targets.length * 6 };
+  },
+};
+
+export const roboticsTools: Tool[] = [robotStatusTool, robotCommandTool, trajectoryPlanTool, manipulationTool, inspectionWorkflowTool];

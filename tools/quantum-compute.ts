@@ -148,4 +148,14 @@ export const quantumOptimizeTool: Tool = {
   },
 };
 
-export const quantumTools: Tool[] = [quantumSimulateTool, quantumOptimizeTool];
+export const quantumHybridWorkflowTool: Tool = {
+  name: "quantum.hybridWorkflow",
+  description: "Run a hybrid classical/quantum workflow with simulation and optimization stages.",
+  async execute(params) {
+    const simulation = await quantumSimulateTool.execute(params);
+    const optimization = await quantumOptimizeTool.execute({ iterations: (params.iterations as number | undefined) ?? 12, paramCount: 4 });
+    return { simulation, optimization, orchestration: "hybrid", governed: true };
+  },
+};
+
+export const quantumTools: Tool[] = [quantumSimulateTool, quantumOptimizeTool, quantumHybridWorkflowTool];

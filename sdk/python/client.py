@@ -33,12 +33,15 @@ class HoareAIClient:
         self,
         base_url: str,
         api_key: Optional[str] = None,
+        org_id: Optional[str] = None,
         timeout: int = 30,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self._headers: Dict[str, str] = {"Content-Type": "application/json"}
         if api_key:
             self._headers["Authorization"] = "Bearer " + api_key
+        if org_id:
+            self._headers["x-org-id"] = org_id
         self.timeout = timeout
 
     # ------------------------------------------------------------------
@@ -169,3 +172,22 @@ class HoareAIClient:
     def delete_session(self, session_id: str) -> Dict[str, Any]:
         """Delete a session."""
         return self._request("DELETE", "/api/session/" + session_id)
+
+    # ------------------------------------------------------------------
+    # Partner integration surface
+    # ------------------------------------------------------------------
+
+    def run_agent(self, message: str) -> Dict[str, Any]:
+        return self._request("POST", "/agent/run", {"message": message})
+
+    def invoke_partner_tool(self, tool_name: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return self._request("POST", "/tools/invoke", {"toolName": tool_name, "params": params or {}})
+
+    def execute_workflow(self, definition: Dict[str, Any]) -> Dict[str, Any]:
+        return self._request("POST", "/workflow/execute", {"definition": definition})
+
+    def generate_foundation(self, task: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        return self._request("POST", "/foundation/generate", {"task": task, "params": params})
+
+
+HoareClient = HoareAIClient
