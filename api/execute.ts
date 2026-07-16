@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { allTools } from "../tools";
+import { getOrgId, invokeGovernedTool, type TenantRequest } from "./platform";
 
 export type ExecutionStatus = "pending" | "running" | "completed" | "failed";
 
@@ -38,6 +39,8 @@ executeRouter.post("/", async (req: Request, res: Response) => {
     return;
   }
 
+  const orgId = getOrgId(req);
+  const actor = (req as TenantRequest).auth?.subject;
   const jobId = uuidv4();
   const job: ExecutionJob = {
     id: jobId,
@@ -53,7 +56,7 @@ executeRouter.post("/", async (req: Request, res: Response) => {
     setImmediate(async () => {
       job.status = "running";
       try {
-        job.result = await tool.execute(job.params);
+        job.result = await invokeGovernedTool({ orgId, actor, tool, params: job.params });
         job.status = "completed";
       } catch (err) {
         job.error = err instanceof Error ? err.message : String(err);
@@ -69,7 +72,7 @@ executeRouter.post("/", async (req: Request, res: Response) => {
   // Synchronous execution
   job.status = "running";
   try {
-    job.result = await tool.execute(job.params);
+    job.result = await invokeGovernedTool({ orgId, actor, tool, params: job.params });
     job.status = "completed";
     job.completedAt = Date.now();
     res.json({ jobId, status: job.status, result: job.result });

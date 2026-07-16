@@ -105,4 +105,31 @@ export const riskAnalysisTool: Tool = {
   },
 };
 
-export const financeTools: Tool[] = [marketDataTool, portfolioAnalysisTool, riskAnalysisTool];
+export const marketForecastTool: Tool = {
+  name: "finance.marketForecast",
+  description: "Forecast market direction and confidence over a configurable horizon.",
+  async execute(params) {
+    const symbol = String(params.symbol ?? "HOARE");
+    const horizonDays = (params.horizonDays as number | undefined) ?? 30;
+    return { symbol, horizonDays, direction: "neutral-positive", confidence: 0.68, drivers: ["volume", "sentiment", "macro"] };
+  },
+};
+
+export const financeAnomalyDetectionTool: Tool = {
+  name: "finance.anomalyDetection",
+  description: "Detect anomalies in financial time series, invoices, and usage patterns.",
+  async execute(params) {
+    const seriesName = String(params.seriesName ?? "usage-spend");
+    return { seriesName, anomalies: [{ index: 0, severity: "medium", reason: "above rolling baseline" }], threshold: 2.5 };
+  },
+};
+
+export const financeRiskModelTool: Tool = {
+  name: "finance.riskModel",
+  description: "Run a domain risk model for portfolio, usage, or operational exposures.",
+  async execute(params) {
+    return riskAnalysisTool.execute(params);
+  },
+};
+
+export const financeTools: Tool[] = [marketDataTool, portfolioAnalysisTool, riskAnalysisTool, financeRiskModelTool, marketForecastTool, financeAnomalyDetectionTool];
