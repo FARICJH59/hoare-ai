@@ -1,7 +1,7 @@
 
 import { Router } from "express";
-import { body, ok } from "../respond";
-import { governancePolicies, listAudit, requestGovernanceApproval, approveGovernanceApproval, rejectGovernanceApproval } from "../../../core/usecases/governance/engine";
+import { body, ok } from "../../respond";
+import { governancePolicies, listAudit, requestGovernanceApproval, approveGovernanceApproval, rejectGovernanceApproval } from "../../../../core/usecases/governance/engine";
 export const usecaseGovernancePhaseRouter = Router();
 usecaseGovernancePhaseRouter.get("/usecases/governance/policies", (_req, res) => ok(res, { namespace: "usecases.governance.policies", items: governancePolicies }));
 usecaseGovernancePhaseRouter.get("/usecases/governance/roles", (_req, res) => ok(res, { namespace: "usecases.governance.roles", items: ["admin", "operator", "viewer", "auditor"] }));
