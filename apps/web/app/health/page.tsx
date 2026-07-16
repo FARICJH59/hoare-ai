@@ -1,12 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const HEALTH_CHECK_TIMEOUT_MS = 2_000;
 
 async function fetchHealth() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
+
   try {
-    const res = await fetch(`${API_URL}/health`, { cache: "no-store" });
+    const res = await fetch(`${API_URL}/health`, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
     if (!res.ok) return null;
     return res.json();
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
