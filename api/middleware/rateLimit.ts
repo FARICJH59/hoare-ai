@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { persistRecord, resolveOrgId } from "../platform";
 
 interface RateLimitEntry {
   count: number;
@@ -36,6 +37,16 @@ export function rateLimit(opts: RateLimitOptions = {}) {
     }
 
     entry.count++;
+    persistRecord("rate_limits", {
+      org_id: resolveOrgId(req) ?? "anonymous",
+      bucket: req.path,
+      subject: key,
+      count: entry.count,
+      limit_count: max,
+      window_start: new Date(entry.resetAt - windowMs).toISOString(),
+      window_end: new Date(entry.resetAt).toISOString(),
+      updated_at: new Date().toISOString(),
+    });
 
     res.setHeader("X-RateLimit-Limit", max);
     res.setHeader("X-RateLimit-Remaining", Math.max(0, max - entry.count));

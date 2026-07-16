@@ -2,10 +2,13 @@ import express, { Request, Response, NextFunction } from "express";
 import { chatRouter } from "./chat";
 import { executeRouter } from "./execute";
 import { toolsRouter } from "./tools";
-import { sessionRouter } from "./session";
+import { sessionRouter, sessionStore } from "./session";
+import { workflowRouter, workflowHealth } from "./workflow";
+import { foundationRouter } from "./foundation";
 import { securityHeaders, auditLogger, rateLimit, requireJson, authMiddleware } from "./middleware";
 import { structuredLogger, metrics } from "./observability";
 import { allTools } from "../tools";
+import { billingHealth, durableStorageHealth, durableStorageStatus, getOrgId, getUsage, governanceHealth, listAuditLogs, requireOrgIsolation, type TenantRequest, writeAuditLog } from "./platform";
 
 const START_TIME = Date.now();
 const VERSION = process.env.npm_package_version ?? "1.0.0";
@@ -42,23 +45,51 @@ export function createApp(): express.Application {
         redis: process.env.REDIS_URL ? "configured" : "not-configured",
         qgps: process.env.QGPS_BASE_URL ? "configured" : "not-configured",
       },
+      platform: {
+        durableStorage: durableStorageStatus(),
+        durableStorageHealth: durableStorageHealth(),
+        governance: governanceHealth(),
+        billingEngine: billingHealth(),
+        workflowEngine: workflowHealth(),
+      },
       timestamp: new Date().toISOString(),
     });
   });
 
   app.get("/metrics", (_req: Request, res: Response) => {
     res.setHeader("Content-Type", "text/plain; version=0.0.4");
+    metrics.gauge("hoare_registered_tools", allTools.length);
+    metrics.gauge("hoare_agent_sessions_active", sessionStore.size);
     res.send(metrics.toPrometheusText());
   });
 
-  // ── Auth gate — all /api/* routes require authentication in production ────
-  app.use("/api", authMiddleware);
+  // ── Auth + tenant gate — all /api/* routes require authentication and org isolation in production ────
+  app.use("/api", authMiddleware, requireOrgIsolation);
+  app.use(["/workflow", "/foundation", "/billing", "/audit", "/session"], authMiddleware, requireOrgIsolation);
 
   // ── API routes ─────────────────────────────────────────────────────────────
   app.use("/api/chat", chatRouter);
   app.use("/api/execute", executeRouter);
   app.use("/api/tools", toolsRouter);
   app.use("/api/session", sessionRouter);
+  app.use("/api/workflow", workflowRouter);
+  app.use("/api/foundation", foundationRouter);
+  app.use("/workflow", workflowRouter);
+  app.use("/foundation", foundationRouter);
+  app.get("/billing/usage", (req: Request, res: Response) => res.json(getUsage(getOrgId(req))));
+  app.get("/audit/logs", (req: Request, res: Response) => res.json({ logs: listAuditLogs(getOrgId(req)) }));
+  app.post("/session/update", (req: Request, res: Response) => {
+    const orgId = getOrgId(req);
+    const session = sessionStore.get(String(req.body?.sessionId ?? req.body?.id ?? ""));
+    if (!session || session.orgId !== orgId) {
+      res.status(404).json({ error: "Session not found." });
+      return;
+    }
+    session.metadata = { ...session.metadata, ...(req.body?.metadata ?? {}) };
+    session.updatedAt = Date.now();
+    writeAuditLog({ org_id: orgId, actor_id: (req as TenantRequest).tenant?.actorId, action: "session.update", resource_type: "agent_session", resource_id: session.id, metadata: {} });
+    res.json(session);
+  });
 
   // Capability discovery
   app.get("/api/capabilities", (_req: Request, res: Response) => {
@@ -95,3 +126,5 @@ export { chatRouter } from "./chat";
 export { executeRouter } from "./execute";
 export { toolsRouter } from "./tools";
 export { sessionRouter } from "./session";
+export { workflowRouter } from "./workflow";
+export { foundationRouter } from "./foundation";

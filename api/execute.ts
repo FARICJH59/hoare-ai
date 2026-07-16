@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { allTools } from "../tools";
+import { getOrgId, invokeGovernedTool, persistRecord, type TenantRequest } from "./platform";
 
 export type ExecutionStatus = "pending" | "running" | "completed" | "failed";
 
@@ -38,6 +39,8 @@ executeRouter.post("/", async (req: Request, res: Response) => {
     return;
   }
 
+  const orgId = getOrgId(req);
+  const actorId = (req as TenantRequest).tenant?.actorId;
   const jobId = uuidv4();
   const job: ExecutionJob = {
     id: jobId,
@@ -47,19 +50,21 @@ executeRouter.post("/", async (req: Request, res: Response) => {
     createdAt: Date.now(),
   };
   jobs.set(jobId, job);
+  persistRecord("workflow_jobs", { id: jobId, org_id: orgId, tool_name: toolName, params: job.params, status: job.status, created_at: new Date(job.createdAt).toISOString() });
 
   if (runAsync) {
     // Fire-and-forget
     setImmediate(async () => {
       job.status = "running";
       try {
-        job.result = await tool.execute(job.params);
+        job.result = await invokeGovernedTool({ orgId, actorId, tool, params: job.params, source: "execute_job" });
         job.status = "completed";
       } catch (err) {
         job.error = err instanceof Error ? err.message : String(err);
         job.status = "failed";
       } finally {
         job.completedAt = Date.now();
+        persistRecord("workflow_jobs", { id: jobId, org_id: orgId, tool_name: toolName, params: job.params, status: job.status, result: job.result, error: job.error, created_at: new Date(job.createdAt).toISOString(), completed_at: new Date(job.completedAt).toISOString() });
       }
     });
     res.status(202).json({ jobId, status: "pending" });
@@ -69,14 +74,16 @@ executeRouter.post("/", async (req: Request, res: Response) => {
   // Synchronous execution
   job.status = "running";
   try {
-    job.result = await tool.execute(job.params);
+    job.result = await invokeGovernedTool({ orgId, actorId, tool, params: job.params, source: "execute_job" });
     job.status = "completed";
     job.completedAt = Date.now();
+    persistRecord("workflow_jobs", { id: jobId, org_id: orgId, tool_name: toolName, params: job.params, status: job.status, result: job.result, created_at: new Date(job.createdAt).toISOString(), completed_at: new Date(job.completedAt).toISOString() });
     res.json({ jobId, status: job.status, result: job.result });
   } catch (err) {
     job.error = err instanceof Error ? err.message : String(err);
     job.status = "failed";
     job.completedAt = Date.now();
+    persistRecord("workflow_jobs", { id: jobId, org_id: orgId, tool_name: toolName, params: job.params, status: job.status, error: job.error, created_at: new Date(job.createdAt).toISOString(), completed_at: new Date(job.completedAt).toISOString() });
     res.status(500).json({ jobId, status: job.status, error: job.error });
   }
 });

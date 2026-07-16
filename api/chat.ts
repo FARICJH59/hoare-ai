@@ -4,16 +4,17 @@ import { Agent } from "../agent/agent";
 import { AgentMemory } from "../agent/memory";
 import { allTools } from "../tools";
 import { sessionStore, type UnifiedSession } from "./session";
+import { assertGoverned, governedTool, getOrgId, meterUsage, persistRecord, writeAuditLog, type TenantRequest } from "./platform";
 
-function getOrCreateSession(sessionId: string): UnifiedSession {
+function getOrCreateSession(sessionId: string, orgId: string, actorId?: string): UnifiedSession {
   const existing = sessionStore.get(sessionId);
-  if (existing) {
+  if (existing && existing.orgId === orgId) {
     existing.updatedAt = Date.now();
     if (!existing.agent) {
       existing.agent = new Agent({
         name: `session-agent-${sessionId}`,
         description: "Auto-created agent for chat session.",
-        tools: allTools,
+        tools: allTools.map((tool) => governedTool(orgId, actorId, tool)),
       });
     }
     return existing;
@@ -21,17 +22,19 @@ function getOrCreateSession(sessionId: string): UnifiedSession {
   const agent = new Agent({
     name: `session-agent-${sessionId}`,
     description: "Auto-created agent for chat session.",
-    tools: allTools,
+    tools: allTools.map((tool) => governedTool(orgId, actorId, tool)),
   });
   const now = Date.now();
   const session: UnifiedSession = {
     id: sessionId,
     agent,
+    orgId,
     metadata: {},
     createdAt: now,
     updatedAt: now,
   };
   sessionStore.set(sessionId, session);
+  persistRecord("agent_sessions", { id: sessionId, org_id: orgId, state: {}, metadata: {}, created_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() });
   return session;
 }
 
@@ -46,11 +49,16 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     return;
   }
 
+  const orgId = getOrgId(req);
+  const actorId = (req as TenantRequest).tenant?.actorId;
   const sid = sessionId && typeof sessionId === "string" ? sessionId : uuidv4();
-  const session = getOrCreateSession(sid);
+  const session = getOrCreateSession(sid, orgId, actorId);
 
   try {
+    const decision = assertGoverned({ orgId, actorId, action: "agent.run", resource: sid, metadata: { messageLength: message.length } });
     const result = await session.agent!.run(message.trim());
+    meterUsage({ orgId, actorId, meter: "agent_run", source: "chat", sourceId: sid, metadata: { toolsUsed: result.toolsUsed.length, governanceDecision: decision.decision } });
+    writeAuditLog({ org_id: orgId, actor_id: actorId, action: "agent.run", resource_type: "agent_session", resource_id: sid, decision: decision.decision, metadata: { toolsUsed: result.toolsUsed } });
     res.json({
       sessionId: sid,
       agentId: result.agentId,
@@ -69,7 +77,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 chatRouter.get("/:sessionId/history", (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const session = sessionStore.get(sessionId);
-  if (!session || !session.agent) {
+  if (!session || !session.agent || session.orgId !== getOrgId(req)) {
     res.status(404).json({ error: `Session "${sessionId}" not found.` });
     return;
   }
@@ -81,7 +89,7 @@ chatRouter.get("/:sessionId/history", (req: Request, res: Response) => {
 chatRouter.delete("/:sessionId", (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const session = sessionStore.get(sessionId);
-  if (!session || !session.agent) {
+  if (!session || !session.agent || session.orgId !== getOrgId(req)) {
     res.status(404).json({ error: `Session "${sessionId}" not found.` });
     return;
   }

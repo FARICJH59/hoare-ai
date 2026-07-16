@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { structuredLogger } from "../observability/logger";
+import { persistRecord, resolveOrgId } from "../platform";
 
 export interface AuditEntry {
   timestamp: string;
@@ -31,6 +32,14 @@ export function auditLogger(req: Request, res: Response, next: NextFunction): vo
       userAgent,
     };
     structuredLogger.info("audit", entry);
+    persistRecord("audit_logs", {
+      org_id: resolveOrgId(req) ?? "anonymous",
+      action: "http.request",
+      resource_type: req.path,
+      decision: String(res.statusCode),
+      metadata: entry,
+      created_at: entry.timestamp,
+    });
   });
 
   next();
