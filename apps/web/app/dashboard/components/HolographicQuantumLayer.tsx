@@ -1,11 +1,14 @@
 "use client";
 
 import { Bloom, ChromaticAberration, DepthOfField, EffectComposer } from "@react-three/postprocessing";
+import type React from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { BlendFunction } from "postprocessing";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useThemeController } from "./ThemeController";
+
+const holographicPerformance = { targetFps: 45, minParticleDensity: 0.18, maxParticleDensity: 0.72, lowPowerParticleDensity: 0.22, maxGpuLoadThreshold: 0.78 } as const;
 
 function QuantumGrid({ intensity }: { intensity: number }) {
   const gridRef = useRef<THREE.Mesh>(null);
@@ -70,6 +73,21 @@ function QuantumShimmer({ intensity }: { intensity: number }) {
   );
 }
 
+function FpsGovernor({ onScaleChange }: { onScaleChange: (scale: number) => void }) {
+  const samples = useRef<number[]>([]);
+
+  useFrame((_state, delta) => {
+    const fps = 1 / Math.max(delta, 0.001);
+    samples.current.push(fps);
+    if (samples.current.length < 30) return;
+    const average = samples.current.reduce((sum, value) => sum + value, 0) / samples.current.length;
+    samples.current = [];
+    onScaleChange(average < holographicPerformance.targetFps ? 0.72 : 1);
+  });
+
+  return null;
+}
+
 function QuantumBloom({ intensity }: { intensity: number }) {
   const chromaticOffset = useMemo(() => new THREE.Vector2(0.0015 + intensity * 0.001, 0.0012 + intensity * 0.001), [intensity]);
 
@@ -84,18 +102,33 @@ function QuantumBloom({ intensity }: { intensity: number }) {
 
 export function HolographicQuantumLayer() {
   const { holographicIntensity, particleDensity } = useThemeController();
+  const [fpsScale, setFpsScale] = useState(1);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(media.matches);
+    const update = () => setPrefersReducedMotion(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  const effectiveParticleDensity = prefersReducedMotion
+    ? holographicPerformance.lowPowerParticleDensity
+    : Math.min(holographicPerformance.maxParticleDensity, Math.max(holographicPerformance.minParticleDensity, particleDensity * fpsScale));
 
   return (
     <div
       className="tf-r3f-canvas tf-holographic-layer pointer-events-none fixed inset-0 z-0 overflow-hidden"
       aria-label="R3F Canvas holographic quantum scene"
-      style={{ opacity: 0.28 + holographicIntensity * 0.42, filter: `saturate(${1 + holographicIntensity})` }}
+      style={{ opacity: 0.28 + holographicIntensity * 0.42, filter: `saturate(${1 + holographicIntensity})`, "--tf-gpu-load-threshold": holographicPerformance.maxGpuLoadThreshold } as React.CSSProperties}
     >
       <Canvas dpr={[1, 1.5]} camera={{ position: [0, 1.2, 5.2], fov: 52 }} gl={{ antialias: false, powerPreference: "high-performance", alpha: true }}>
         <color attach="background" args={["#02040A"]} />
         <fog attach="fog" args={["#02040A", 5, 12]} />
         <QuantumGrid intensity={holographicIntensity} />
-        <QuantumParticles density={particleDensity} />
+        <QuantumParticles density={effectiveParticleDensity} />
+        <FpsGovernor onScaleChange={setFpsScale} />
         <QuantumShimmer intensity={holographicIntensity} />
         <QuantumBloom intensity={holographicIntensity} />
       </Canvas>

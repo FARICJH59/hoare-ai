@@ -1,4 +1,5 @@
 import type { Application } from "express";
+import { phaseRouteHardening } from "./routes/hardening";
 import { agentsPhaseRouter } from "./routes/agents";
 import { workflowsPhaseRouter } from "./routes/workflows";
 import { toolsPhaseRouter } from "./routes/tools";
@@ -20,4 +21,4 @@ import { usecaseVersioningPhaseRouter } from "./routes/usecases/versioning";
 import { usecaseAnalyticsPhaseRouter } from "./routes/usecases/analytics";
 import { usecaseMarketplacePhaseRouter } from "./routes/usecases/marketplace";
 const phaseRouters = [agentsPhaseRouter, workflowsPhaseRouter, toolsPhaseRouter, safetyPhaseRouter, riskPhaseRouter, observabilityPhaseRouter, eventsPhaseRouter, messagingPhaseRouter, schedulingPhaseRouter, federationPhaseRouter, persistencePhaseRouter, persistenceSnapshotPhaseRouter, usecasesPhaseRouter, usecaseTemplatesPhaseRouter, usecasePacksPhaseRouter, usecaseDeploymentPhaseRouter, usecaseGovernancePhaseRouter, usecaseVersioningPhaseRouter, usecaseAnalyticsPhaseRouter, usecaseMarketplacePhaseRouter];
-export function registerPhaseRoutes(app: Application) { phaseRouters.forEach((router) => { app.use(router); app.use("/api", router); }); }
+export function registerPhaseRoutes(app: Application) { app.use(phaseRouteHardening); phaseRouters.forEach((router) => { app.use(router); app.use("/api", router); }); }
