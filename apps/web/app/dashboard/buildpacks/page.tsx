@@ -4,6 +4,7 @@ const cards = [
   { title: "Build Pack Compiler Console", namespace: "buildpacks.compiler", color: "var(--tf-holo-lime)" },
   { title: "Build Pack Deployment Manager", namespace: "buildpacks.deployer", color: "var(--tf-holo-magenta)" },
   { title: "Environment Profile Viewer", namespace: "buildpacks.environments", color: "var(--tf-holo-gold)" },
+  { title: "Marketplace Publish/Install Panel", namespace: "buildpacks.marketplace", color: "var(--tf-holo-blue)" },
 ];
 
 const environments = ["dev", "staging", "production", "sovereign", "edge", "marketplace"];

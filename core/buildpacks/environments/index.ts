@@ -15,6 +15,9 @@ export interface EnvironmentConfig {
   dataLocality: "global" | "regional" | "sovereign" | "device";
   holographicMode: "full" | "balanced" | "reduced";
   releaseChannel: "dev" | "beta" | "stable" | "sovereign" | "edge";
+  particleDensity: "high" | "medium" | "low";
+  debugToggles: boolean;
+  resourceProfile: "unconstrained" | "production" | "sovereign" | "constrained";
 }
 
 export function getEnvironmentConfig(environment: BuildPackEnvironment): EnvironmentConfig {

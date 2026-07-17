@@ -14,6 +14,8 @@ export interface BuildPackDetectionResult {
   detectedAt: string;
 }
 
+export type UABPDetectionResult = BuildPackDetectionResult;
+
 export interface BuildPackManifest {
   schemaVersion: "uabp.v1";
   namespace: "buildpacks.manifest";
@@ -24,6 +26,10 @@ export interface BuildPackManifest {
   tools: BundleSection;
   safety: BundleSection;
   risk: BundleSection;
+  observability: BundleSection;
+  events: BundleSection;
+  messaging: BundleSection;
+  scheduling: BundleSection;
   persistence: BundleSection;
   federation: BundleSection;
   usecases: BundleSection;
@@ -38,6 +44,8 @@ export interface BuildPackManifest {
   quantumShaders: BundleSection;
 }
 
+export type UABPManifest = BuildPackManifest;
+
 export interface BuildPackArtifact {
   namespace: "buildpacks.compiler";
   id: string;
@@ -48,11 +56,13 @@ export interface BuildPackArtifact {
   options?: JsonRecord;
 }
 
+export type UABPArtifact = BuildPackArtifact;
+
 export function section(name: string, files: string[], metadata: JsonRecord = {}): BundleSection {
   return { namespace: `buildpacks.bundle.${name}`, name, files, metadata };
 }
 
-export function createManifest(detectionResult: BuildPackDetectionResult): BuildPackManifest {
+export function createManifest(detectionResult: UABPDetectionResult): UABPManifest {
   const c = detectionResult.components;
   return {
     schemaVersion: "uabp.v1",
@@ -64,6 +74,10 @@ export function createManifest(detectionResult: BuildPackDetectionResult): Build
     tools: section("tools", c.tools ?? []),
     safety: section("safety", c.safety ?? []),
     risk: section("risk", c.risk ?? []),
+    observability: section("observability", c.observability ?? []),
+    events: section("events", c.events ?? []),
+    messaging: section("messaging", c.messaging ?? []),
+    scheduling: section("scheduling", c.scheduling ?? []),
     persistence: section("persistence", c.persistence ?? []),
     federation: section("federation", c.federation ?? []),
     usecases: section("usecases", c.usecases ?? []),
@@ -79,6 +93,16 @@ export function createManifest(detectionResult: BuildPackDetectionResult): Build
   };
 }
 
-export function validateManifest(manifest: BuildPackManifest): boolean {
+export function validateManifest(manifest: UABPManifest): boolean {
   return manifest.schemaVersion === "uabp.v1" && Boolean(manifest.agents && manifest.workflows && manifest.usecases && manifest.holographicUI && manifest.quantumShaders);
+}
+
+export function serializeManifest(manifest: UABPManifest): string {
+  return JSON.stringify(manifest, null, 2);
+}
+
+export function parseManifest(raw: string | JsonRecord): UABPManifest {
+  const manifest = typeof raw === "string" ? JSON.parse(raw) : raw;
+  if (!validateManifest(manifest as UABPManifest)) throw new Error("Invalid UABP manifest");
+  return manifest as UABPManifest;
 }
