@@ -7,5 +7,19 @@
   "logoOrbitSpeed": "Logo-Umlaufgeschwindigkeit",
   "colorPalette": "Farbpalette",
   "techFusion": "Tech Fusion KI/ML",
-  "quantumLayer": "Holografische Quantenschicht"
+  "quantumLayer": "Holografische Quantenschicht",
+  "activeAgents": "Aktive Agenten",
+  "workflowsRun": "Workflows ausgeführt",
+  "apiRequests": "API-Anfragen",
+  "signedInAs": "Angemeldet als",
+  "standaloneMode": "Standalone-Modus: Das Dashboard ist ohne Supabase-Auth verfügbar.",
+  "supabaseMissing": "Supabase ist nicht konfiguriert. Fügen Sie NEXT_PUBLIC_SUPABASE_URL und NEXT_PUBLIC_SUPABASE_ANON_KEY hinzu, um Authentifizierung zu aktivieren; Dashboard-Module bleiben verfügbar.",
+  "promptPanel": "Prompt-Panel",
+  "promptPanelDescription": "Starten Sie Use-Case-Prompts, Vorlagen, Packs, Deployment, Governance, Analytics und Marketplace.",
+  "openPromptPanel": "Prompt-Panel öffnen",
+  "usecases": "Use Cases",
+  "usecasesDescription": "Durchsuchen Sie UABP-Use-Cases, Vorlagen, Packs, Deployment, Governance, Analytics und Marketplace.",
+  "buildpacks": "Build Packs",
+  "buildpacksDescription": "Unified Agentic Build Packs erkennen, kompilieren, deployen, veröffentlichen und installieren.",
+  "settingsDescription": "Sprache, holografische Intensität, Partikel, Logoanimation und Palette anpassen."
 }

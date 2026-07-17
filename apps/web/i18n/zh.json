@@ -7,5 +7,19 @@
   "logoOrbitSpeed": "标志轨道速度",
   "colorPalette": "调色板",
   "techFusion": "Tech Fusion AI/ML",
-  "quantumLayer": "全息量子层"
+  "quantumLayer": "全息量子层",
+  "activeAgents": "活跃代理",
+  "workflowsRun": "已运行工作流",
+  "apiRequests": "API 请求",
+  "signedInAs": "登录为",
+  "standaloneMode": "独立模式：无需 Supabase 身份验证也可使用仪表板。",
+  "supabaseMissing": "Supabase 未配置。添加 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY 可启用身份验证；仪表板模块仍可使用。",
+  "promptPanel": "提示面板",
+  "promptPanelDescription": "启动用例提示、模板、包、部署、治理、分析和市场流程。",
+  "openPromptPanel": "打开提示面板",
+  "usecases": "用例",
+  "usecasesDescription": "浏览支持 UABP 的用例、模板、包、部署、治理、分析和市场模块。",
+  "buildpacks": "构建包",
+  "buildpacksDescription": "检测、编译、部署、发布和安装统一代理构建包。",
+  "settingsDescription": "调整语言、全息强度、粒子密度、徽标动画和调色板。"
 }

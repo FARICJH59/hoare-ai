@@ -7,5 +7,19 @@
   "logoOrbitSpeed": "Vitesse orbitale du logo",
   "colorPalette": "Palette de couleurs",
   "techFusion": "Tech Fusion IA/ML",
-  "quantumLayer": "Couche quantique holographique"
+  "quantumLayer": "Couche quantique holographique",
+  "activeAgents": "Agents actifs",
+  "workflowsRun": "Workflows exécutés",
+  "apiRequests": "Requêtes API",
+  "signedInAs": "Connecté en tant que",
+  "standaloneMode": "Mode autonome : le tableau de bord est disponible sans authentification Supabase.",
+  "supabaseMissing": "Supabase n’est pas configuré. Ajoutez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY pour activer l’authentification ; les modules restent disponibles.",
+  "promptPanel": "Panneau de prompts",
+  "promptPanelDescription": "Lancez des prompts de cas d’usage, modèles, packs, déploiement, gouvernance, analytics et marketplace.",
+  "openPromptPanel": "Ouvrir le panneau",
+  "usecases": "Cas d’usage",
+  "usecasesDescription": "Parcourez les cas d’usage UABP, modèles, packs, déploiement, gouvernance, analytics et marketplace.",
+  "buildpacks": "Build Packs",
+  "buildpacksDescription": "Détectez, compilez, déployez, publiez et installez des Unified Agentic Build Packs.",
+  "settingsDescription": "Réglez langue, intensité holographique, particules, animation du logo et palette."
 }
