@@ -1,4 +1,5 @@
 import type { ExecutionRequest, ExecutionResult } from "../types";
+import type { BuildPackManifest } from "../buildpacks/manifest";
 import { createId } from "../types";
 import { getAgent } from "./registry";
 import { evaluateSafety } from "../safety/engine";
@@ -19,7 +20,9 @@ import { getHardenedContext, toSafeError, withConcurrency, withRetry, withTimeou
 
 async function runAgentCore(request: ExecutionRequest, id: string): Promise<ExecutionResult> {
   const context = getHardenedContext({ ...request, id });
-  const agent = getAgent(request.agentId);
+  const buildPackManifest = request.metadata?.buildPackManifest as BuildPackManifest | undefined;
+  const buildPackAgentId = buildPackManifest?.agents?.metadata?.defaultAgentId as string | undefined;
+  const agent = getAgent(request.agentId ?? buildPackAgentId);
   const domain = getDomainMetadata(request.domain);
   const trace = startTrace("agents.runtime.run", { id, agentId: agent.id, correlationId: context.correlationId, tenantId: context.tenantId });
   const started = publishEvent("agent.started", { id, agentId: agent.id, correlationId: context.correlationId, tenantId: context.tenantId }, request.domain);
@@ -33,14 +36,14 @@ async function runAgentCore(request: ExecutionRequest, id: string): Promise<Exec
     incrementMetric("safety.decisions");
     if (!safety.allowed) {
       incrementMetric("agents.runtime.blocked");
-      return { id, namespace: "agents.runtime", status: "blocked", metadata: { agent, domain, safety, trace, context }, events: [started] };
+      return { id, namespace: "agents.runtime", status: "blocked", metadata: { agent, domain, safety, trace, context, buildPack: buildPackManifest ? { name: buildPackManifest.name, schemaVersion: buildPackManifest.schemaVersion } : null }, events: [started] };
     }
     risk = evaluateRisk(request);
     incrementMetric("risk.decisions");
   } catch (error) {
     const safeError = toSafeError(error);
     publishEvent("agent.failed", { id, agentId: agent.id, error: safeError, correlationId: context.correlationId }, request.domain);
-    return { id, namespace: "agents.runtime", status: "blocked", output: { reason: "safety-or-risk-failed" }, metadata: { agent, domain, error: safeError, trace, context }, events: [started] };
+    return { id, namespace: "agents.runtime", status: "blocked", output: { reason: "safety-or-risk-failed" }, metadata: { agent, domain, error: safeError, trace, context, buildPack: buildPackManifest ? { name: buildPackManifest.name, schemaVersion: buildPackManifest.schemaVersion } : null }, events: [started] };
   }
 
   const orchestration = planDeterministicRoute(request);
@@ -59,7 +62,7 @@ async function runAgentCore(request: ExecutionRequest, id: string): Promise<Exec
     namespace: "agents.runtime",
     status: "completed",
     output,
-    metadata: { agent, domain, safety, risk, orchestration, trace, mailbox, federation, scheduled, context },
+    metadata: { agent, domain, safety, risk, orchestration, trace, mailbox, federation, scheduled, context, buildPack: buildPackManifest ? { name: buildPackManifest.name, schemaVersion: buildPackManifest.schemaVersion } : null },
     events: [started, ...(tool?.events ?? []), completed],
   };
 }

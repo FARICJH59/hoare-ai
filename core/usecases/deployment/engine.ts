@@ -3,12 +3,14 @@ import { publishEvent } from "../../events/bus";
 import { getHardenedContext } from "../../hardening";
 import { enforceGovernance } from "../governance/engine";
 import { listDeployments, saveDeployment } from "./registry";
+import { deployBuildPack } from "../../buildpacks/deployer";
 
 export function deployUseCase(input: JsonRecord) {
   const context = getHardenedContext({ input, metadata: input });
+  const buildPack = input.manifest && input.artifact ? deployBuildPack(input.manifest as never, input.artifact as never, String(input.environment ?? "dev") as never) : null;
   const governance = enforceGovernance({ ...input, action: "deploy", environment: input.environment ?? "development" });
-  if (!governance.allowed) return { namespace: "usecases.deployment.engine", status: "blocked", governance };
-  const deployment = saveDeployment({ id: createId("ucdep"), namespace: "usecases.deployment.engine", status: "deployed", tenantId: context.tenantId, channel: context.channel, ...input });
+  if (!governance.allowed) return { namespace: "usecases.deployment.engine", status: "blocked", governance, buildPack };
+  const deployment = saveDeployment({ ...input, id: createId("ucdep"), namespace: "usecases.deployment.engine", status: "deployed", tenantId: context.tenantId, channel: context.channel, buildPack });
   publishEvent("usecase.deployed", { deployment, tenantId: context.tenantId });
   return deployment;
 }

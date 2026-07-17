@@ -1,0 +1,2 @@
+import type { EnvironmentConfig } from "./index";
+export function getEnvironmentConfig(): EnvironmentConfig { return { namespace: "buildpacks.environments.staging", environment: "staging", verboseLogging: true, strictSafety: true, requiresApproval: false, dataLocality: "regional", holographicMode: "balanced", releaseChannel: "beta" }; }
