@@ -26,6 +26,10 @@ export async function withRetry<T>(operation: () => Promise<T>, retries: number,
 }
 
 export async function withConcurrency<T>(key: string, max: number, operation: () => Promise<T>): Promise<T> {
+  const deadline = Date.now() + 1_000;
+  while ((active.get(key) ?? 0) >= max && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
   const count = active.get(key) ?? 0;
   if (count >= max) throw new HardeningError("concurrency.limit", `Concurrency limit reached for ${key}`, { key, max });
   active.set(key, count + 1);
