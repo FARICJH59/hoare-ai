@@ -7,5 +7,19 @@
   "logoOrbitSpeed": "लोगो कक्षा गति",
   "colorPalette": "रंग पैलेट",
   "techFusion": "Tech Fusion AI/ML",
-  "quantumLayer": "होलोग्राफिक क्वांटम लेयर"
+  "quantumLayer": "होलोग्राफिक क्वांटम लेयर",
+  "activeAgents": "सक्रिय एजेंट",
+  "workflowsRun": "चलाए गए वर्कफ़्लो",
+  "apiRequests": "API अनुरोध",
+  "signedInAs": "साइन इन किया",
+  "standaloneMode": "स्टैंडअलोन मोड: Supabase auth के बिना भी डैशबोर्ड उपलब्ध है।",
+  "supabaseMissing": "Supabase कॉन्फ़िगर नहीं है। authentication सक्षम करने के लिए NEXT_PUBLIC_SUPABASE_URL और NEXT_PUBLIC_SUPABASE_ANON_KEY जोड़ें; डैशबोर्ड मॉड्यूल उपलब्ध रहेंगे।",
+  "promptPanel": "प्रॉम्प्ट पैनल",
+  "promptPanelDescription": "यूज़ केस prompts, templates, packs, deployment, governance, analytics और marketplace flows लॉन्च करें।",
+  "openPromptPanel": "प्रॉम्प्ट पैनल खोलें",
+  "usecases": "यूज़ केस",
+  "usecasesDescription": "UABP-enabled use cases, templates, packs, deployment, governance, analytics और marketplace modules देखें।",
+  "buildpacks": "बिल्ड पैक",
+  "buildpacksDescription": "Unified Agentic Build Packs detect, compile, deploy, publish और install करें।",
+  "settingsDescription": "भाषा, holographic intensity, particle density, logo animation और palette mode बदलें।"
 }
