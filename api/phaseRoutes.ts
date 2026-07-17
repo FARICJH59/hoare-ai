@@ -1,0 +1,25 @@
+import type { Application } from "express";
+import { phaseRouteHardening } from "./routes/hardening";
+import { agentsPhaseRouter } from "./routes/agents";
+import { workflowsPhaseRouter } from "./routes/workflows";
+import { toolsPhaseRouter } from "./routes/tools";
+import { safetyPhaseRouter } from "./routes/safety";
+import { riskPhaseRouter } from "./routes/risk";
+import { observabilityPhaseRouter } from "./routes/observability";
+import { eventsPhaseRouter } from "./routes/events";
+import { messagingPhaseRouter } from "./routes/messaging";
+import { schedulingPhaseRouter } from "./routes/scheduling";
+import { federationPhaseRouter } from "./routes/federation";
+import { persistencePhaseRouter } from "./routes/persistence";
+import { persistenceSnapshotPhaseRouter } from "./routes/persistence/snapshot";
+import { usecasesPhaseRouter } from "./routes/usecases";
+import { usecaseTemplatesPhaseRouter } from "./routes/usecases/templates";
+import { usecasePacksPhaseRouter } from "./routes/usecases/packs";
+import { usecaseDeploymentPhaseRouter } from "./routes/usecases/deployment";
+import { usecaseGovernancePhaseRouter } from "./routes/usecases/governance";
+import { usecaseVersioningPhaseRouter } from "./routes/usecases/versioning";
+import { usecaseAnalyticsPhaseRouter } from "./routes/usecases/analytics";
+import { usecaseMarketplacePhaseRouter } from "./routes/usecases/marketplace";
+import { buildpacksPhaseRouter } from "./routes/buildpacks";
+const phaseRouters = [agentsPhaseRouter, workflowsPhaseRouter, toolsPhaseRouter, safetyPhaseRouter, riskPhaseRouter, observabilityPhaseRouter, eventsPhaseRouter, messagingPhaseRouter, schedulingPhaseRouter, federationPhaseRouter, persistencePhaseRouter, persistenceSnapshotPhaseRouter, usecasesPhaseRouter, usecaseTemplatesPhaseRouter, usecasePacksPhaseRouter, usecaseDeploymentPhaseRouter, usecaseGovernancePhaseRouter, usecaseVersioningPhaseRouter, usecaseAnalyticsPhaseRouter, usecaseMarketplacePhaseRouter, buildpacksPhaseRouter];
+export function registerPhaseRoutes(app: Application) { app.use(phaseRouteHardening); phaseRouters.forEach((router) => { app.use(router); app.use("/api", router); }); }

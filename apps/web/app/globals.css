@@ -5,9 +5,247 @@
 :root {
   --foreground: 255 255 255;
   --background: 10 15 30;
+  --tf-quantum-black: #02040A;
+  --tf-holo-cyan: #3BF5FF;
+  --tf-holo-violet: #7B3FFF;
+  --tf-holo-lime: #A8FF3B;
+  --tf-holo-magenta: #FF3BCE;
+  --tf-holo-gold: #FFD93B;
+  --tf-holo-blue: #3B6BFF;
+  --tf-holo-intensity: 0.72;
+  --tf-particle-density: 0.55;
+  --tf-logo-speed: 1;
 }
 
 body {
-  background-color: rgb(var(--background));
+  background:
+    radial-gradient(circle at 20% 10%, rgba(59, 245, 255, 0.12), transparent 28%),
+    radial-gradient(circle at 80% 15%, rgba(123, 63, 255, 0.16), transparent 30%),
+    rgb(var(--background));
   color: rgb(var(--foreground));
+}
+
+[data-palette="aurora"] {
+  --tf-holo-cyan: #72FFF8;
+  --tf-holo-violet: #B76CFF;
+  --tf-holo-lime: #6DFFB3;
+  --tf-holo-magenta: #FF6FDB;
+  --tf-holo-gold: #E7FF6D;
+  --tf-holo-blue: #64A6FF;
+}
+
+[data-palette="solar"] {
+  --tf-holo-cyan: #7BF7FF;
+  --tf-holo-violet: #9A70FF;
+  --tf-holo-lime: #D5FF73;
+  --tf-holo-magenta: #FF7AB8;
+  --tf-holo-gold: #FFD93B;
+  --tf-holo-blue: #4F7DFF;
+}
+
+.tf-dashboard-shell {
+  background:
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--tf-holo-blue) 22%, transparent), transparent 35%),
+    linear-gradient(135deg, rgba(59, 245, 255, 0.08), rgba(123, 63, 255, 0.08), rgba(255, 59, 206, 0.05)),
+    var(--tf-quantum-black);
+}
+
+.tf-dashboard-shell main {
+  position: relative;
+}
+
+.tf-dashboard-shell main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(59, 245, 255, 0.08), rgba(255, 217, 59, 0.03), rgba(255, 59, 206, 0.08));
+  border-radius: 32px;
+  filter: blur(30px);
+  opacity: var(--tf-holo-intensity);
+}
+
+.tf-holo-card,
+.tf-dashboard-shell section,
+.tf-dashboard-shell .rounded-lg {
+  box-shadow:
+    0 0 calc(18px * var(--tf-holo-intensity)) rgba(59, 245, 255, 0.16),
+    inset 0 0 28px rgba(123, 63, 255, 0.08);
+}
+
+.tf-dashboard-shell button,
+.tf-dashboard-shell a[role="button"] {
+  box-shadow: 0 0 calc(18px * var(--tf-holo-intensity)) rgba(59, 245, 255, 0.28);
+}
+
+.tf-holo-text,
+.tf-dashboard-shell h1,
+.tf-dashboard-shell h2 {
+  background: linear-gradient(90deg, var(--tf-holo-cyan), var(--tf-holo-violet), var(--tf-holo-magenta), var(--tf-holo-gold), var(--tf-holo-lime), var(--tf-holo-blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 22px rgba(59, 245, 255, 0.2);
+}
+
+.tf-r3f-canvas {
+  transform: translateZ(0);
+  perspective: 900px;
+  will-change: opacity, filter;
+}
+
+.tf-quantum-grid {
+  position: absolute;
+  inset: -20%;
+  transform: rotateX(62deg) translateY(12%) scale(1.1);
+  transform-origin: center;
+  background-image:
+    linear-gradient(rgba(59, 245, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(123, 63, 255, 0.18) 1px, transparent 1px);
+  background-size: 54px 54px;
+  filter: drop-shadow(0 0 8px rgba(59, 245, 255, 0.35));
+  animation: tf-grid-drift 18s linear infinite;
+}
+
+.tf-quantum-particles {
+  position: absolute;
+  inset: 0;
+  opacity: calc(0.28 + var(--tf-particle-density) * 0.55);
+}
+
+.tf-quantum-particles span {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--tf-holo-cyan), transparent 72%);
+  box-shadow: 0 0 18px var(--tf-holo-cyan), 0 0 34px var(--tf-holo-violet);
+  animation: tf-particle-float 8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.tf-quantum-shimmer {
+  position: absolute;
+  inset: -10%;
+  background: linear-gradient(115deg, transparent 20%, rgba(59, 245, 255, 0.08), rgba(255, 59, 206, 0.08), transparent 70%);
+  mix-blend-mode: screen;
+  animation: tf-shimmer 6s ease-in-out infinite;
+}
+
+.tf-quantum-bloom {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 28% 35%, color-mix(in srgb, var(--tf-holo-cyan) 22%, transparent), transparent 20%),
+    radial-gradient(circle at 70% 28%, color-mix(in srgb, var(--tf-holo-magenta) 20%, transparent), transparent 24%),
+    radial-gradient(circle at 50% 75%, color-mix(in srgb, var(--tf-holo-lime) 16%, transparent), transparent 28%);
+  filter: blur(16px) saturate(1.45);
+  animation: tf-depth-pulse 7s ease-in-out infinite;
+}
+
+.tf-logo-orbit {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.tf-logo-3d {
+  position: absolute;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+  will-change: transform, opacity, filter;
+}
+
+.tf-logo-core {
+  z-index: 2;
+  display: grid;
+  height: 64px;
+  width: 64px;
+  place-items: center;
+  border: 1px solid rgba(59, 245, 255, 0.65);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(59, 245, 255, 0.26), rgba(123, 63, 255, 0.32), rgba(255, 59, 206, 0.2));
+  color: white;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  box-shadow: 0 0 28px rgba(59, 245, 255, 0.55), inset 0 0 26px rgba(255, 255, 255, 0.12);
+}
+
+.tf-logo-ring,
+.tf-logo-node {
+  position: absolute;
+  border-radius: 999px;
+}
+
+.tf-logo-ring {
+  inset: 3px;
+  border: 1px solid rgba(168, 255, 59, 0.45);
+}
+
+.tf-logo-ring-b {
+  transform: rotateX(70deg) rotateZ(35deg);
+  border-color: rgba(255, 217, 59, 0.45);
+}
+
+.tf-logo-node {
+  height: 9px;
+  width: 9px;
+  background: var(--tf-holo-gold);
+  box-shadow: 0 0 16px var(--tf-holo-gold);
+}
+
+.tf-logo-node-a { left: 12px; top: 20px; }
+.tf-logo-node-b { right: 14px; bottom: 18px; background: var(--tf-holo-lime); }
+
+@keyframes tf-grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 54px 54px, 54px 54px; }
+}
+
+@keyframes tf-particle-float {
+  0%, 100% { opacity: 0.25; transform: translate3d(0, 0, 0) scale(0.8); }
+  50% { opacity: 1; transform: translate3d(22px, -28px, 0) scale(1.35); }
+}
+
+@keyframes tf-shimmer {
+  0%, 100% { transform: translateX(-18%) skewX(-12deg); opacity: 0.25; }
+  50% { transform: translateX(18%) skewX(-12deg); opacity: 0.8; }
+}
+
+@keyframes tf-depth-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.36; }
+  50% { transform: scale(1.08); opacity: 0.72; }
+}
+
+@keyframes tf-logo-rotate {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+@keyframes tf-logo-glow {
+  0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 12px rgba(59, 245, 255, 0.45)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 32px rgba(255, 59, 206, 0.7)); }
+}
+
+@keyframes tf-logo-orbit {
+  0% { transform: translate3d(1.4rem, 0, 0); }
+  25% { transform: translate3d(0, 0, 1.4rem); }
+  50% { transform: translate3d(-1.4rem, 0, 0); }
+  75% { transform: translate3d(0, 0, -1.4rem); }
+  100% { transform: translate3d(1.4rem, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-quantum-grid,
+  .tf-quantum-particles span,
+  .tf-quantum-shimmer,
+  .tf-quantum-bloom,
+  .tf-logo-orbit,
+  .tf-logo-3d {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
 }
