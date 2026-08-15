@@ -1,6 +1,6 @@
 # HOARE Identity & Trust Plane
 
-The Identity & Trust Plane provides a provider-agnostic boundary between authentication sources and HOARE authorization, tenancy, workloads, agents, devices, services, audit, builder configuration, and application scaffolding.
+The Identity & Trust Plane provides a provider-agnostic boundary between authentication sources and HOARE authorization, tenancy, workloads, agents, devices, services, audit, builder configuration, application scaffolding, and build artifacts.
 
 ## Design rules
 
@@ -14,7 +14,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - Audit events contain identity, tenant, action/resource, decision, and correlation context while avoiding credential/token material.
 - Builder trust specifications are declarative; they do not provision credentials, register external providers, or alter CI/CD.
 - Generated application manifests contain only runtime trust configuration; secrets and private credentials are never generated.
-- Scaffolding writes only deterministic, credential-free configuration artifacts.
+- Scaffolding and build artifacts are deterministic and portable; they do not write to disk, deploy, or mutate the existing CI/CD system.
 - Generic OIDC and SAML adapters map already-validated claims; cryptographic validation, XML parsing/signature validation, replay protection, and credential handling remain host-runtime responsibilities.
 - Login.gov is optional and remains disabled unless explicitly configured and externally authorized.
 - Provider registration is explicit so production connectors can be disabled without removing the identity architecture.
@@ -34,6 +34,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - `runtime.ts` — runtime provider allow-list projection.
 - `application-manifest.ts` — generated application trust manifest.
 - `scaffold.ts` — credential-free application scaffold generation.
+- `build-artifact.ts` — portable build-system artifact for existing application generators.
 
 ## Planned phases
 
@@ -46,6 +47,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 7. SAML provider — initial claims adapter complete
 8. Login.gov sandbox boundary — complete
 9. Application-generation integration — scaffold generation complete
-10. Login.gov production connector only after required external approval
+10. Build-system integration seam — portable artifact complete
+11. Login.gov production connector only after required external approval
 
 No existing CI/CD or deployment configuration is modified by the Identity & Trust phases completed so far.
