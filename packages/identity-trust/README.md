@@ -1,6 +1,6 @@
 # HOARE Identity & Trust Plane
 
-Phase 1 establishes a provider-agnostic identity boundary for HOARE. Phase 2 adds a tenant-aware authorization boundary that reuses the existing HOARE RBAC model.
+The Identity & Trust Plane provides a provider-agnostic boundary between authentication sources and HOARE authorization, tenancy, workloads, agents, devices, services, and audit.
 
 ## Design rules
 
@@ -9,28 +9,27 @@ Phase 1 establishes a provider-agnostic identity boundary for HOARE. Phase 2 add
 - Existing JWT/API-key authentication remains unchanged while the new plane is introduced incrementally.
 - Existing RBAC role-to-permission mappings remain authoritative; the identity plane consumes them rather than duplicating them.
 - Tenant mismatch is denied at the identity-trust authorization boundary.
-- Login.gov is not required, configured, or exposed by this phase.
-- Provider registration is explicit so production connectors can be disabled without removing the identity architecture.
 - Human, workload, agent, device, and service identities are represented separately.
+- Non-human identities require an explicit tenant and do not imply credential issuance.
+- Audit events contain identity, tenant, action/resource, decision, and correlation context while avoiding credential/token material.
+- Login.gov is not required, configured, or exposed by the current phases.
+- Provider registration is explicit so production connectors can be disabled without removing the identity architecture.
 
-## Phase 1 components
+## Current components
 
-- `types.ts` — normalized identity and provider contracts.
+- `types.ts` — normalized identity and provider contracts, including `WorkloadIdentity`.
 - `broker.ts` — provider registry and resolution boundary.
 - `providers/native.ts` — adapter for existing trusted HOARE auth context.
-- `tests/identity-trust/broker.test.ts` — broker contract tests.
-
-## Phase 2 components
-
-- `authorization.ts` — tenant-aware authorization boundary backed by the existing HOARE RBAC implementation.
-- `tests/identity-trust/authorization.test.ts` — authorization and tenant-isolation tests.
+- `authorization.ts` — tenant-aware authorization boundary backed by existing HOARE RBAC.
+- `workload-identity.ts` — normalized agent/device/service/workload identity construction.
+- `audit.ts` — structured identity and authorization audit events plus a test sink.
 
 ## Planned phases
 
 1. Identity contract and broker — complete
 2. Authorization/tenant policy integration — complete
-3. Workload, agent, device, and service identity
-4. Audit/provenance enrichment
+3. Workload, agent, device, and service identity — complete
+4. Audit/provenance enrichment — initial structured event layer complete
 5. Builder/control-plane integration
 6. Optional OIDC/SAML providers
 7. Optional Login.gov sandbox connector
