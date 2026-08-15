@@ -26,8 +26,8 @@ export interface HoareApplicationTrustSpec {
 }
 
 /**
- * Builder-facing identity configuration. This is declarative only: it does
- * not provision credentials, register external providers, or alter CI/CD.
+ * Builder-facing identity configuration. Declarative only: it does not
+ * provision credentials, register external providers, or alter CI/CD.
  */
 export function createIdentityTrustSpec(input: HoareApplicationTrustSpec): HoareApplicationTrustSpec {
   if (!input.applicationId || !input.tenantId) {
@@ -37,6 +37,11 @@ export function createIdentityTrustSpec(input: HoareApplicationTrustSpec): Hoare
   const enabled = input.identity.providers.filter((provider) => provider.enabled);
   if (enabled.length === 0) {
     throw new Error("Identity trust spec requires at least one enabled provider");
+  }
+
+  const loginGov = input.identity.providers.find((provider) => provider.id === "login-gov");
+  if (loginGov?.enabled && loginGov.environment === "production") {
+    throw new Error("Login.gov production federation requires external approval and is not enabled by this builder");
   }
 
   return structuredClone(input);
