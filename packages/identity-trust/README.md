@@ -1,6 +1,6 @@
 # HOARE Identity & Trust Plane
 
-The Identity & Trust Plane provides a provider-agnostic boundary between authentication sources and HOARE authorization, tenancy, workloads, agents, devices, services, and audit.
+The Identity & Trust Plane provides a provider-agnostic boundary between authentication sources and HOARE authorization, tenancy, workloads, agents, devices, services, audit, and builder configuration.
 
 ## Design rules
 
@@ -12,6 +12,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - Human, workload, agent, device, and service identities are represented separately.
 - Non-human identities require an explicit tenant and do not imply credential issuance.
 - Audit events contain identity, tenant, action/resource, decision, and correlation context while avoiding credential/token material.
+- Builder trust specifications are declarative; they do not provision credentials, register external providers, or alter CI/CD.
 - Login.gov is not required, configured, or exposed by the current phases.
 - Provider registration is explicit so production connectors can be disabled without removing the identity architecture.
 
@@ -23,6 +24,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - `authorization.ts` — tenant-aware authorization boundary backed by existing HOARE RBAC.
 - `workload-identity.ts` — normalized agent/device/service/workload identity construction.
 - `audit.ts` — structured identity and authorization audit events plus a test sink.
+- `control-plane.ts` — builder-facing declarative identity trust specification.
 
 ## Planned phases
 
@@ -30,7 +32,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 2. Authorization/tenant policy integration — complete
 3. Workload, agent, device, and service identity — complete
 4. Audit/provenance enrichment — initial structured event layer complete
-5. Builder/control-plane integration
+5. Builder/control-plane integration — initial declarative specification complete
 6. Optional OIDC/SAML providers
 7. Optional Login.gov sandbox connector
 8. Login.gov production connector only after required external approval
