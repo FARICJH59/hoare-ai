@@ -13,7 +13,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - Non-human identities require an explicit tenant and do not imply credential issuance.
 - Audit events contain identity, tenant, action/resource, decision, and correlation context while avoiding credential/token material.
 - Builder trust specifications are declarative; they do not provision credentials, register external providers, or alter CI/CD.
-- The generic OIDC adapter maps **already validated** claims; cryptographic token validation and credential handling remain host-runtime responsibilities.
+- The generic OIDC and SAML adapters map **already validated** claims; cryptographic validation, XML parsing/signature validation, replay protection, and credential handling remain host-runtime responsibilities.
 - Login.gov is not required, configured, or exposed by the current phases.
 - Provider registration is explicit so production connectors can be disabled without removing the identity architecture.
 
@@ -23,6 +23,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - `broker.ts` — provider registry and resolution boundary.
 - `providers/native.ts` — adapter for existing trusted HOARE auth context.
 - `providers/oidc.ts` — generic OIDC claims adapter.
+- `providers/saml.ts` — SAML claims adapter.
 - `authorization.ts` — tenant-aware authorization boundary backed by existing HOARE RBAC.
 - `workload-identity.ts` — normalized agent/device/service/workload identity construction.
 - `audit.ts` — structured identity and authorization audit events plus a test sink.
@@ -36,7 +37,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 4. Audit/provenance enrichment — initial structured event layer complete
 5. Builder/control-plane integration — initial declarative specification complete
 6. Generic OIDC provider — initial claims adapter complete
-7. SAML provider
+7. SAML provider — initial claims adapter complete
 8. Optional Login.gov sandbox connector
 9. Login.gov production connector only after required external approval
 
