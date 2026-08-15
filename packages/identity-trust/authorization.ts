@@ -15,11 +15,8 @@ export interface AuthorizationDecision {
 }
 
 /**
- * Phase 2 authorization boundary.
- *
- * Existing HOARE RBAC remains the source of role->permission mappings. This
- * layer adds tenant-aware identity context without changing the existing
- * security package or authentication middleware.
+ * Tenant-aware authorization boundary. Existing HOARE RBAC remains the
+ * source of role->permission mappings; this layer does not issue credentials.
  */
 export function authorize(request: AuthorizationRequest): AuthorizationDecision {
   const { identity, requiredPermission, tenantId } = request;
@@ -28,7 +25,7 @@ export function authorize(request: AuthorizationRequest): AuthorizationDecision 
     return { allowed: false, reason: "Missing identity subject", permissions: [] };
   }
 
-  if (tenantId && identity.tenantId && tenantId !== identity.tenantId) {
+  if (tenantId && identity.tenantId !== tenantId) {
     return {
       allowed: false,
       reason: "Identity is outside the requested tenant boundary",
