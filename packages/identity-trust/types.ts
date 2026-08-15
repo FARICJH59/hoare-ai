@@ -37,3 +37,8 @@ export interface IdentityProvider {
   readonly type: IdentityType | "federated";
   resolve(input: unknown, context?: IdentityResolutionContext): Promise<HoareIdentity | null>;
 }
+
+export interface WorkloadIdentity extends HoareIdentity {
+  identityType: "workload" | "agent" | "device" | "service";
+  tenantId: string;
+}
