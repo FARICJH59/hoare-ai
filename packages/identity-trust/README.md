@@ -1,6 +1,6 @@
 # HOARE Identity & Trust Plane
 
-The Identity & Trust Plane provides a provider-agnostic boundary between authentication sources and HOARE authorization, tenancy, workloads, agents, devices, services, audit, and builder configuration.
+The Identity & Trust Plane provides a provider-agnostic boundary between authentication sources and HOARE authorization, tenancy, workloads, agents, devices, services, audit, builder configuration, and application scaffolding.
 
 ## Design rules
 
@@ -13,8 +13,9 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - Non-human identities require an explicit tenant and do not imply credential issuance.
 - Audit events contain identity, tenant, action/resource, decision, and correlation context while avoiding credential/token material.
 - Builder trust specifications are declarative; they do not provision credentials, register external providers, or alter CI/CD.
-- Generated application manifests contain only the runtime trust configuration required by the application; secrets and private credentials are never generated into the manifest.
-- The generic OIDC and SAML adapters map **already validated** claims; cryptographic validation, XML parsing/signature validation, replay protection, and credential handling remain host-runtime responsibilities.
+- Generated application manifests contain only runtime trust configuration; secrets and private credentials are never generated.
+- Scaffolding writes only deterministic, credential-free configuration artifacts.
+- Generic OIDC and SAML adapters map already-validated claims; cryptographic validation, XML parsing/signature validation, replay protection, and credential handling remain host-runtime responsibilities.
 - Login.gov is optional and remains disabled unless explicitly configured and externally authorized.
 - Provider registration is explicit so production connectors can be disabled without removing the identity architecture.
 
@@ -25,12 +26,14 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 - `providers/native.ts` — adapter for existing trusted HOARE auth context.
 - `providers/oidc.ts` — generic OIDC claims adapter.
 - `providers/saml.ts` — SAML claims adapter.
+- `providers/login-gov.ts` — optional Login.gov claims boundary.
 - `authorization.ts` — tenant-aware authorization boundary backed by existing HOARE RBAC.
 - `workload-identity.ts` — normalized agent/device/service/workload identity construction.
 - `audit.ts` — structured identity and authorization audit events plus a test sink.
 - `control-plane.ts` — builder-facing declarative identity trust specification.
 - `runtime.ts` — runtime provider allow-list projection.
 - `application-manifest.ts` — generated application trust manifest.
+- `scaffold.ts` — credential-free application scaffold generation.
 
 ## Planned phases
 
@@ -42,7 +45,7 @@ The Identity & Trust Plane provides a provider-agnostic boundary between authent
 6. Generic OIDC provider — initial claims adapter complete
 7. SAML provider — initial claims adapter complete
 8. Login.gov sandbox boundary — complete
-9. Application-generation integration — initial manifest generation complete
+9. Application-generation integration — scaffold generation complete
 10. Login.gov production connector only after required external approval
 
 No existing CI/CD or deployment configuration is modified by the Identity & Trust phases completed so far.
